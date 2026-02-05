@@ -15,6 +15,8 @@ public class StudentCourse
     // Navigation Properties
     public Course Course { get; set; } = null!;
     public Student Student { get; set; } = null!;
+
+
     
     // Additional Properties
     public long StudyLoadId { get; set; }
