@@ -29,8 +29,13 @@ public class StudentCourseConfiguration : IEntityTypeConfiguration<StudentCourse
             .HasForeignKey(sc => sc.StudentId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasMany(s => s.Grades)
+            .WithOne(g => g.StudentCourse)
+            .HasForeignKey(g => g.StudentCourseId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         // Composite index for performance
-        builder.HasIndex(sc => new { sc.StudentId, sc.CourseId, sc.SchoolYear, sc.Semester })
+        builder.HasIndex(sc => new { sc.StudentId, sc.CourseId, sc.SchoolYear, sc.Semester})
             .IsUnique();
     }
 }

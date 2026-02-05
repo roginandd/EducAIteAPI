@@ -20,21 +20,9 @@ public class GradeConfiguration : IEntityTypeConfiguration<Grade>
             .IsRequired();
 
         builder.Property(g => g.GradeType)
-            .IsRequired()
-            ;
-
-        // Foreign keys
-        builder.HasOne(g => g.Student)
-            .WithMany()
-            .HasForeignKey(g => g.StudentId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasOne(g => g.Course)
-            .WithMany()
-            .HasForeignKey(g => g.CourseId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .IsRequired();
 
         // Composite index for performance
-        builder.HasIndex(g => new { g.StudentId, g.CourseId, g.GradeType });
+        builder.HasIndex(g => new { g.StudentCourseId, g.GradeType });
     }
 }
