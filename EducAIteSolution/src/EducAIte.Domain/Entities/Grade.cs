@@ -12,11 +12,13 @@ public class Grade
 
     public long CourseId {get; set;}
 
+
     public decimal GradeValue {get; set;}
 
     public GradeType GradeType {get; set;}
 
     // Navigation Property
     public Student Student { get; set;} = null!;
+    public Course Course { get; set;} = null!;
     
-}
+}   

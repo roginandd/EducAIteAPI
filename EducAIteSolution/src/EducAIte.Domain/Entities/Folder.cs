@@ -11,6 +11,8 @@ public class Folder
 
     public long StudentId {get; set;}
 
+    public Student Student { get; set; } = null!;
+
     public SchoolYear SchoolYear { get; set; }
 
     public byte Semester { get; set; }
