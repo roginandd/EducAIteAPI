@@ -36,6 +36,13 @@ public class FolderConfiguration : IEntityTypeConfiguration<Folder>
         builder.Property(f => f.UpdatedAt)
             .IsRequired();
 
+        // Configure SchoolYear as owned entity
+        builder.OwnsOne(f => f.SchoolYear, sy =>
+        {
+            sy.Property(s => s.StartYear).HasColumnName("SchoolYearStart");
+            sy.Property(s => s.EndYear).HasColumnName("SchoolYearEnd");
+        });
+
         // Foreign keys
         builder.HasOne(f => f.Student)
             .WithMany(s => s.Folders)

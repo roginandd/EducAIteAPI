@@ -29,13 +29,15 @@ public class StudentCourseConfiguration : IEntityTypeConfiguration<StudentCourse
             .HasForeignKey(sc => sc.StudentId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasMany(s => s.Grades)
-            .WithOne(g => g.StudentCourse)
-            .HasForeignKey(g => g.StudentCourseId)
-            .OnDelete(DeleteBehavior.Cascade);
+        // Configure SchoolYear as owned entity
+        builder.OwnsOne(sc => sc.SchoolYear, sy =>
+        {
+            sy.Property(s => s.StartYear).HasColumnName("SchoolYearStart");
+            sy.Property(s => s.EndYear).HasColumnName("SchoolYearEnd");
+        });
 
         // Composite index for performance
-        builder.HasIndex(sc => new { sc.StudentId, sc.CourseId, sc.SchoolYear, sc.Semester})
+        builder.HasIndex(sc => new { sc.StudentId, sc.CourseId })
             .IsUnique();
     }
 }

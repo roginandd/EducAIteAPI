@@ -21,6 +21,13 @@ public class StudyLoadConfiguration : IEntityTypeConfiguration<StudyLoad>
         builder.Property(sl => sl.UpdatedAt)
             .IsRequired();
 
+        // Configure SchoolYear as owned entity
+        builder.OwnsOne(sl => sl.SchoolYear, sy =>
+        {
+            sy.Property(s => s.StartYear).HasColumnName("SchoolYearStart");
+            sy.Property(s => s.EndYear).HasColumnName("SchoolYearEnd");
+        });
+
         // Foreign keys
         builder.HasOne(sl => sl.Student)
             .WithMany(s => s.StudyLoads)

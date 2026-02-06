@@ -31,7 +31,7 @@ public class DocumentConfiguration : IEntityTypeConfiguration<Document>
 
         // Foreign keys
         builder.HasOne(d => d.Folder)
-            .WithMany()
+            .WithMany(f => f.Documents)
             .HasForeignKey(d => d.FolderId)
             .OnDelete(DeleteBehavior.Cascade);
 
