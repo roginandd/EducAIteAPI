@@ -2,3 +2,4 @@ appsettings.*
 obj/
 obj/**
 bin/
+.github
