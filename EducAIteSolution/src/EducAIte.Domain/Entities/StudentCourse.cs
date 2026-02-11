@@ -20,6 +20,6 @@ public class StudentCourse
     
     // Additional Properties
     public long StudyLoadId { get; set; }
-    public SchoolYear SchoolYear { get; set; }
+    public required SchoolYear SchoolYear { get; set; }
     public int Semester { get; set; }
 }

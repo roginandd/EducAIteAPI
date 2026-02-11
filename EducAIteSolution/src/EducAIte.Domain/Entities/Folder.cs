@@ -13,7 +13,7 @@ public class Folder
 
     public Student Student { get; set; } = null!;
 
-    public SchoolYear SchoolYear { get; set; }
+    public required SchoolYear SchoolYear { get; set; }
 
     public byte Semester { get; set; }
 
