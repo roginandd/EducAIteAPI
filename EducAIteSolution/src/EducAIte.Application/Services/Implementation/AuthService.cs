@@ -6,6 +6,7 @@ using System.Security.Claims;
 using EducAIte.Application.DTOs.Request;
 using EducAIte.Application.DTOs.Response;
 using EducAIte.Application.Extensions;
+using EducAIte.Application.Extensions.MappingExtensions;
 using EducAIte.Application.Interfaces;
 using EducAIte.Domain.Entities;
 using EducAIte.Domain.Interfaces;
@@ -81,5 +82,43 @@ public class AuthService : IAuthService
         return AuthResult.Ok(token, expiration);
     }
 
+    public async Task<AuthResult> Register (StudentRegistrationRequest studentRegistrationRequest)
+    {       
+        // Destructure the registration request to get the student ID number and password
+        string studentIdNumber = studentRegistrationRequest.StudentIdNumber;
+
+        // Check if the student ID number is already registered
+        Student? existingStudentWithIdNumber = await _studentRepository.GetByStudentIdNumberAsync(studentIdNumber);
+
+        if (existingStudentWithIdNumber != null)
+            return AuthResult.Fail("Student ID Number is already registered.");
+
+        Student newStudent = studentRegistrationRequest.toEntity();
+
+        await _studentRepository.AddStudentAsync(newStudent);
+
+        string token = GenerateJwtToken(newStudent);
+
+        _logger.LogInformation("Registration successful for student ID {StudentId}", studentIdNumber);
+
+        DateTime expiration = DateTime.Now.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpiryInMinutes"]!));
+
+        return AuthResult.Ok(token, expiration);
+    }
+
+    public async Task<StudentProfileResponse?> GetProfile(string studentIdNumber)
+    {
+        if (string.IsNullOrEmpty(studentIdNumber))
+            return null;
+
+        Student? student = await _studentRepository.GetByStudentIdNumberAsync(studentIdNumber);
+
+        if (student == null)
+            return null;
+
+        _logger.LogInformation("Profile retrieved for student ID {StudentId}", studentIdNumber);
+
+        return student.ToStudentProfile();
+    }
         
 }
