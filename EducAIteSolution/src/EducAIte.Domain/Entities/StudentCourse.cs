@@ -22,4 +22,7 @@ public class StudentCourse
     public long StudyLoadId { get; set; }
     public required SchoolYear SchoolYear { get; set; }
     public int Semester { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime CreatedAt {get; set;} = DateTime.UtcNow;
+    public DateTime UpdatedAt {get; set;} = DateTime.UtcNow;
 }

@@ -27,7 +27,12 @@ public class DocumentConfiguration : IEntityTypeConfiguration<Document>
             .HasDefaultValueSql("timezone('utc', now())");
 
         builder.Property(d => d.UpdatedAt)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
+
+        builder.Property(d => d.IsDeleted)
+            .IsRequired()
+            .HasDefaultValue(false);
 
         // Foreign keys
         builder.HasOne(d => d.Folder)

@@ -22,6 +22,18 @@ public class GradeConfiguration : IEntityTypeConfiguration<Grade>
         builder.Property(g => g.GradeType)
             .IsRequired();
 
+        builder.Property(g => g.CreatedAt)
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
+
+        builder.Property(g => g.UpdatedAt)
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
+
+        builder.Property(g => g.IsDeleted)
+            .IsRequired()
+            .HasDefaultValue(false);
+
         // Composite index for performance
         builder.HasIndex(g => new { g.StudentCourseId, g.GradeType });
     }

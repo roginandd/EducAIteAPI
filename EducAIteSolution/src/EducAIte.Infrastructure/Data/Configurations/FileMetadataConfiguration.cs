@@ -35,8 +35,17 @@ public class FileMetadataConfiguration : IEntityTypeConfiguration<FileMetadata>
             .IsRequired();
 
         builder.Property(fm => fm.UploadedAt)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
 
+        builder.Property(fm => fm.UpdatedAt)
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
+
+        builder.Property(fm => fm.IsDeleted)
+            .IsRequired()
+            .HasDefaultValue(false);
+            
         // Foreign key
         builder.HasOne(fm => fm.Student)
             .WithMany(s => s.UploadedFiles)

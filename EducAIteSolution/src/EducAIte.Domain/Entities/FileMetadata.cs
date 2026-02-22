@@ -10,7 +10,9 @@ public class FileMetadata
     public string ContentType { get; set; } = string.Empty;
     public string StorageKey { get; set; } = string.Empty; // The path in S3/Firebase
     public long FileSizeInBytes { get; set; }
-    public DateTime UploadedAt { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime UploadedAt {get; set;} = DateTime.UtcNow;
+    public DateTime UpdatedAt {get; set;} = DateTime.UtcNow;
     
     // Audit: Who uploaded it?
     public long StudentId { get; set; }

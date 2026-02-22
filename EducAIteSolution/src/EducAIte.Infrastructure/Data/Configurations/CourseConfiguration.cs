@@ -31,7 +31,12 @@ public class CourseConfiguration : IEntityTypeConfiguration<Course>
             .HasDefaultValueSql("timezone('utc', now())");
 
         builder.Property(c => c.UpdatedAt)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
+
+        builder.Property(c => c.IsDeleted)
+            .IsRequired()
+            .HasDefaultValue(false);
 
         builder.HasIndex(c => c.EDPCode)
             .HasDatabaseName("IDX_Courses_EDPCode")

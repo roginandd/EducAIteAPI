@@ -27,10 +27,16 @@ public class FlashcardConfiguration : IEntityTypeConfiguration<Flashcard>
             .HasMaxLength(2000);
 
         builder.Property(f => f.CreatedAt)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
 
         builder.Property(f => f.UpdatedAt)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
+
+        builder.Property(f => f.IsDeleted)
+            .IsRequired()
+            .HasDefaultValue(false);
 
         // Foreign keys
         builder.HasOne(f => f.Course)

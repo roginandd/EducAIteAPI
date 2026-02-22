@@ -52,10 +52,16 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
             .HasMaxLength(20);
 
         builder.Property(s => s.CreatedAt)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
 
         builder.Property(s => s.UpdatedAt)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
+
+        builder.Property(s => s.IsDeleted)
+            .IsRequired()
+            .HasDefaultValue(false);
 
         builder.HasIndex(s => s.StudentIdNumber)
             .IsUnique();

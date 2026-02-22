@@ -25,6 +25,18 @@ public class StudentFlashcardConfiguration : IEntityTypeConfiguration<StudentFla
             .HasPrecision(5, 4)
             .HasDefaultValue(0.0m);
 
+        builder.Property(sf => sf.CreatedAt)
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
+        
+        builder.Property(sf => sf.UpdatedAt)
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
+
+        builder.Property(sf => sf.IsDeleted)
+            .IsRequired()
+            .HasDefaultValue(false);
+
         // Foreign keys
         builder.HasOne(sf => sf.Student)
             .WithMany(s => s.Flashcards)

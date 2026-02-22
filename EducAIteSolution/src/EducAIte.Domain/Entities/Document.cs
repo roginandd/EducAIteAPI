@@ -18,6 +18,9 @@ public class Document
     public long FileMetadataId { get; set; }
     public FileMetadata FileMetadata { get; set; } = null!;
 
-    public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
+    // Aditional Properties
+    public bool IsDeleted { get; set; }
+
+    public DateTime CreatedAt {get; set;} = DateTime.UtcNow;
+    public DateTime UpdatedAt {get; set;} = DateTime.UtcNow;
 }

@@ -34,7 +34,12 @@ public class FolderConfiguration : IEntityTypeConfiguration<Folder>
             .HasDefaultValueSql("timezone('utc', now())");
 
         builder.Property(f => f.UpdatedAt)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
+
+        builder.Property(f => f.IsDeleted)
+            .IsRequired()
+            .HasDefaultValue(false);
 
         // Configure SchoolYear as owned entity
         builder.OwnsOne(f => f.SchoolYear, sy =>

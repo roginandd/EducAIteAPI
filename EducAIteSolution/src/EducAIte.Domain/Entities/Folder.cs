@@ -31,6 +31,8 @@ public class Folder
 
     public ICollection<StudentFlashcard> StudentFlashcards { get; set; } = new HashSet<StudentFlashcard>();
 
-    public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
+    //Additional Properties
+    public bool IsDeleted { get; set; }
+    public DateTime CreatedAt {get; set;} = DateTime.UtcNow;
+    public DateTime UpdatedAt {get; set;} = DateTime.UtcNow;
 }

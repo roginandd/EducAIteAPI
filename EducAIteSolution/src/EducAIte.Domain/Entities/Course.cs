@@ -13,9 +13,8 @@ public class Course
 
     public byte Units {get; set;} 
 
-    public DateTime CreatedAt {get; set;}
-
-    public DateTime UpdatedAt {get; set;}
-
-    
+    // Additional Properties
+    public bool IsDeleted {get; set;}
+    public DateTime CreatedAt {get; set;} = DateTime.UtcNow;
+    public DateTime UpdatedAt {get; set;} = DateTime.UtcNow;
 }

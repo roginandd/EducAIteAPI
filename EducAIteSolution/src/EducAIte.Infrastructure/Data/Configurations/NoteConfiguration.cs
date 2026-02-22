@@ -26,10 +26,16 @@ public class NoteConfiguration : IEntityTypeConfiguration<Note>
             .IsRequired();
 
         builder.Property(n => n.CreatedAt)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
 
         builder.Property(n => n.UpdatedAt)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
+
+        builder.Property(n => n.IsDeleted)
+            .IsRequired()
+            .HasDefaultValue(false);
 
         // Foreign key
         builder.HasOne(n => n.Document)

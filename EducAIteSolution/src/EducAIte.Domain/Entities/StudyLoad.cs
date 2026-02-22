@@ -23,10 +23,11 @@ public class StudyLoad
 
     public int TotalUnits => Courses.Sum(course => course.Units);
 
-    public DateTime CreatedAt {get; set;} = DateTime.UtcNow;
-
-    public DateTime UpdatedAt {get; set;} = DateTime.UtcNow;
-
     // Navigation Property
     public Student Student { get; set;} = null!;
+
+    // Additional Properties
+    public bool IsDeleted { get; set; }
+    public DateTime CreatedAt {get; set;} = DateTime.UtcNow;
+    public DateTime UpdatedAt {get; set;} = DateTime.UtcNow;
 }

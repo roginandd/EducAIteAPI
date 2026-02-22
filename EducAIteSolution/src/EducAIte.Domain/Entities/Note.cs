@@ -14,9 +14,10 @@ public class Note
     // Foreign Key
     public long DocumentId { get; set; }
     public Document Document { get; set; } = null!;
-
-    public DateTime CreatedAt { get; set; }
-
-    public DateTime UpdatedAt { get; set; }
+    
+    // Additional Properties
+    public bool IsDeleted { get; set; }
+    public DateTime CreatedAt {get; set;} = DateTime.UtcNow;
+    public DateTime UpdatedAt {get; set;} = DateTime.UtcNow;
     
 }

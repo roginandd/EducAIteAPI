@@ -16,10 +16,16 @@ public class StudyLoadConfiguration : IEntityTypeConfiguration<StudyLoad>
             .ValueGeneratedOnAdd();
 
         builder.Property(sl => sl.CreatedAt)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
 
         builder.Property(sl => sl.UpdatedAt)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
+
+        builder.Property(sl => sl.IsDeleted)
+            .IsRequired()
+            .HasDefaultValue(false);
 
         // Configure SchoolYear as owned entity
         builder.OwnsOne(sl => sl.SchoolYear, sy =>

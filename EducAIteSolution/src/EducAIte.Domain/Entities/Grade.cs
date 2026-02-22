@@ -14,6 +14,10 @@ public class Grade
     public decimal GradeValue {get; set;}
 
     public GradeType GradeType {get; set;}
-
+    
+    //Additional Properties
+    public bool IsDeleted { get; set; }
+    public DateTime CreatedAt {get; set;} = DateTime.UtcNow;
+    public DateTime UpdatedAt {get; set;} = DateTime.UtcNow;
     
 }   

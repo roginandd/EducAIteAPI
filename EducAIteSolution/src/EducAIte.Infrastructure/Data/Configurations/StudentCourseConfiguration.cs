@@ -18,6 +18,18 @@ public class StudentCourseConfiguration : IEntityTypeConfiguration<StudentCourse
         builder.Property(sc => sc.Semester)
             .IsRequired();
 
+        builder.Property(sc => sc.CreatedAt)
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
+        
+        builder.Property(sc => sc.UpdatedAt)            
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
+
+        builder.Property(sc => sc.IsDeleted)
+            .IsRequired()
+            .HasDefaultValue(false);
+
         // Foreign keys
         builder.HasOne(sc => sc.Course)
             .WithMany()
