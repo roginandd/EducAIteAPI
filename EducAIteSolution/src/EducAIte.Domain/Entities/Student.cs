@@ -41,5 +41,11 @@ public class Student
     public ICollection<StudentFlashcard> Flashcards { get; set; } = new HashSet<StudentFlashcard>();
 
     public ICollection<StudentCourse> EnrolledCourses { get; set; } = new HashSet<StudentCourse>();
+
+
+    public override string ToString()
+    {
+        return $"StudentId: {StudentId}, StudentIdNumber: {StudentIdNumber}, FirstName: {FirstName}, LastName: {LastName}, Email: {Email}";
+    }
     
 }

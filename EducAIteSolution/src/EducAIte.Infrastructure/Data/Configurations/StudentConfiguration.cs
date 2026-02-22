@@ -37,7 +37,8 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
             .HasMaxLength(100);
 
         builder.Property(s => s.MiddleName)
-            .HasMaxLength(100);
+            .HasMaxLength(100)
+            .IsRequired(false);
 
         builder.Property(s => s.PasswordHash)
             .IsRequired()
