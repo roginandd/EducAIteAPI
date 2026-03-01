@@ -16,7 +16,6 @@ public class StudentFlashcard
     // Performance Data
     public int CorrectCount { get; set; }
     public int WrongCount { get; set; }
-    public decimal MasteryLevel { get; set; } 
 
     // Additional Properties
     public bool IsDeleted { get; set; }
