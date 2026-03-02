@@ -21,9 +21,6 @@ public class StudentFlashcardConfiguration : IEntityTypeConfiguration<StudentFla
         builder.Property(sf => sf.WrongCount)
             .HasDefaultValue(0);
 
-        builder.Property(sf => sf.MasteryLevel)
-            .HasPrecision(5, 4)
-            .HasDefaultValue(0.0m);
 
         builder.Property(sf => sf.CreatedAt)
             .IsRequired()

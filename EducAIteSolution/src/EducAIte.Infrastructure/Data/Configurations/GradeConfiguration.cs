@@ -35,6 +35,7 @@ public class GradeConfiguration : IEntityTypeConfiguration<Grade>
             .HasDefaultValue(false);
 
         // Composite index for performance
-        builder.HasIndex(g => new { g.StudentCourseId, g.GradeType });
+        builder.HasIndex(g => new { g.StudentCourseId, g.GradeType })
+            .HasDatabaseName("IX_Grades_StudentCourse_GradeType");
     }
 }

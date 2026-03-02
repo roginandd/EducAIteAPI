@@ -66,9 +66,11 @@ public class FolderConfiguration : IEntityTypeConfiguration<Folder>
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(f => f.ExternalId)
+            .HasDatabaseName("UX_Folders_ExternalId")
             .IsUnique();
 
         builder.HasIndex(f => new { f.StudentId, f.FolderKey })
+            .HasDatabaseName("UX_Folders_Student_FolderKey")
             .IsUnique();
     }
 }

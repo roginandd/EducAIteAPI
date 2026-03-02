@@ -53,6 +53,7 @@ public class FileMetadataConfiguration : IEntityTypeConfiguration<FileMetadata>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(fm => fm.StorageKey)
+            .HasDatabaseName("UX_FileMetadata_StorageKey")
             .IsUnique();
     }
 }

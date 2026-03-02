@@ -46,7 +46,7 @@ public class DocumentConfiguration : IEntityTypeConfiguration<Document>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(d => d.ExternalId)
-            .HasDatabaseName("IDX_Documents_ExternalId")
+            .HasDatabaseName("UX_Documents_ExternalId")
             .IsUnique();
     }
 }
