@@ -1,6 +1,10 @@
 using System.Text;
+using Amazon;
+using Amazon.S3;
 using EducAIte.Application.Interfaces;
 using EducAIte.Application.Services;
+using EducAIte.Application.Services.Implementation;
+using EducAIte.Application.Services.Interface;
 using EducAIte.Domain.Interfaces;
 using EducAIte.Infrastructure.Data;
 using EducAIte.Infrastructure.Repositories;
@@ -22,6 +26,21 @@ Console.WriteLine(connectionString);
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
+
+// CloudFront / AWS
+builder.Services.AddScoped<IAWSService>(sp =>
+{ 
+    var region = RegionEndpoint.GetBySystemName(builder.Configuration["AWS:Region"] ?? "ap-southeast-2");
+    var accessKey = builder.Configuration["AWS:AccessKey"]!;
+    var secretKey = builder.Configuration["AWS:SecretKey"]!;
+    var s3Client = new AmazonS3Client(accessKey, secretKey, region);
+    var domain = builder.Configuration["CloudFront:Domain"]!;
+    var keyPairId = builder.Configuration["CloudFront:KeyPairId"]!;
+    var privateKeyPath = builder.Configuration["CloudFront:PrivateKeyPath"]!;
+    var privateKey = File.ReadAllText(privateKeyPath);
+    var bucketName = builder.Configuration["AWS:BucketName"]!;
+    return new AWSService(s3Client, bucketName, domain, keyPairId, privateKey);
+});
 
 // Business Logic and Application Services
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -56,7 +75,7 @@ if (app.Environment.IsDevelopment())
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "My Web API v1");
         c.RoutePrefix = string.Empty; // Swagger UI at app root
-    });    
+    });
 }
 
 app.UseHttpsRedirection();

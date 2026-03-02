@@ -45,11 +45,18 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<byte>("Units")
                         .HasColumnType("smallint");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
 
                     b.HasKey("CourseId");
 
@@ -87,8 +94,15 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                     b.Property<long>("FolderId")
                         .HasColumnType("bigint");
 
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
 
                     b.HasKey("DocumentId");
 
@@ -129,6 +143,11 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                     b.Property<long>("FileSizeInBytes")
                         .HasColumnType("bigint");
 
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("StorageKey")
                         .IsRequired()
                         .HasMaxLength(500)
@@ -137,8 +156,15 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                     b.Property<long>("StudentId")
                         .HasColumnType("bigint");
 
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
                     b.Property<DateTime>("UploadedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
 
                     b.HasKey("FileMetaDataId");
 
@@ -167,13 +193,20 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
 
                     b.Property<long?>("DocumentId")
                         .HasColumnType("bigint");
 
                     b.Property<Guid>("ExternalId")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<long>("NoteId")
                         .HasColumnType("bigint");
@@ -184,7 +217,9 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(1000)");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
 
                     b.HasKey("FlashcardId");
 
@@ -224,6 +259,11 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -239,7 +279,9 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
 
                     b.HasKey("FolderId");
 
@@ -264,6 +306,11 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("GradeId"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
                     b.Property<int>("GradeType")
                         .HasColumnType("integer");
 
@@ -271,8 +318,18 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .HasPrecision(3, 2)
                         .HasColumnType("numeric(3,2)");
 
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<long>("StudentCourseId")
                         .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
 
                     b.HasKey("GradeId");
 
@@ -290,13 +347,20 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("NoteId"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
 
                     b.Property<long>("DocumentId")
                         .HasColumnType("bigint");
 
                     b.Property<Guid>("ExternalId")
                         .HasColumnType("uuid");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -308,7 +372,9 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
 
                     b.HasKey("NoteId");
 
@@ -332,7 +398,9 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
 
                     b.Property<string>("Email")
                         .IsRequired()
@@ -344,13 +412,17 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
                     b.Property<string>("MiddleName")
-                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
@@ -376,7 +448,9 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .HasColumnType("character varying(20)");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
 
                     b.HasKey("StudentId");
 
@@ -400,6 +474,16 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                     b.Property<long>("CourseId")
                         .HasColumnType("bigint");
 
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
                     b.Property<int>("Semester")
                         .HasColumnType("integer");
 
@@ -408,6 +492,11 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
 
                     b.Property<long>("StudyLoadId")
                         .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
 
                     b.HasKey("StudentCourseId");
 
@@ -432,11 +521,21 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0);
 
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
                     b.Property<long>("FlashcardId")
                         .HasColumnType("bigint");
 
                     b.Property<long?>("FolderId")
                         .HasColumnType("bigint");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<decimal>("MasteryLevel")
                         .ValueGeneratedOnAdd()
@@ -446,6 +545,11 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
 
                     b.Property<long>("StudentId")
                         .HasColumnType("bigint");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
 
                     b.Property<int>("WrongCount")
                         .ValueGeneratedOnAdd()
@@ -473,16 +577,25 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("StudyLoadId"));
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
 
                     b.Property<long>("FileMetadataId")
                         .HasColumnType("bigint");
+
+                    b.Property<bool>("IsDeleted")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
 
                     b.Property<long>("StudentId")
                         .HasColumnType("bigint");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
 
                     b.HasKey("StudyLoadId");
 
