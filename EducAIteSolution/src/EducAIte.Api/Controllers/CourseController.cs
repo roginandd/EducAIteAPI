@@ -1,0 +1,83 @@
+using EducAIte.Application.DTOs.Request;
+using EducAIte.Application.Services.Interface;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace EducAIte.Api.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+[Authorize]
+public class CourseController : ControllerBase
+{
+    private readonly ICourseService _courseService;
+
+    public CourseController(ICourseService courseService)
+    {
+        _courseService = courseService;
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetAll()
+    {
+        var courses = await _courseService.GetAllCoursesAsync();
+        return Ok(courses);
+    }
+
+    [HttpGet("{id:long}")]
+    public async Task<IActionResult> GetById(long id)
+    {
+        var course = await _courseService.GetCourseByIdAsync(id);
+        if (course is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(course);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateCourseRequest request)
+    {
+        try
+        {
+            var createdCourse = await _courseService.CreateCourseAsync(request);
+            return CreatedAtAction(nameof(GetById), new { id = createdCourse.CourseId }, createdCourse);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+    }
+
+    [HttpPut("{id:long}")]
+    public async Task<IActionResult> Update(long id, [FromBody] UpdateCourseRequest request)
+    {
+        try
+        {
+            var isUpdated = await _courseService.UpdateCourseAsync(id, request);
+            if (!isUpdated)
+            {
+                return NotFound();
+            }
+
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("{id:long}")]
+    public async Task<IActionResult> Delete(long id)
+    {
+        var isDeleted = await _courseService.DeleteCourseAsync(id);
+        if (!isDeleted)
+        {
+            return NotFound();
+        }
+
+        return NoContent();
+    }
+}
