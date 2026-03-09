@@ -10,6 +10,7 @@ using EducAIte.Application.Extensions.MappingExtensions;
 using EducAIte.Application.Interfaces;
 using EducAIte.Domain.Entities;
 using EducAIte.Domain.Interfaces;
+using Mapster;
 using Microsoft.IdentityModel.Tokens;
 
 
@@ -45,7 +46,7 @@ public class AuthService : IAuthService
             issuer: _configuration["Jwt:Issuer"]!,
             audience: _configuration["Jwt:Audience"]!,
             claims: claims,
-            expires: DateTime.Now.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpiryInMinutes"]!)),
+            expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpiryInMinutes"]!)),
             signingCredentials: credentials
         );
 
@@ -77,7 +78,7 @@ public class AuthService : IAuthService
 
         _logger.LogInformation("Login successful for student ID {StudentId}", studentIdNumber);
 
-        DateTime expiration = DateTime.Now.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpiryInMinutes"]!));
+        DateTime expiration = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpiryInMinutes"]!));
 
         return AuthResult.Ok(token, expiration);
     }
@@ -86,6 +87,12 @@ public class AuthService : IAuthService
     {       
         // Destructure the registration request to get the student ID number and password
         string studentIdNumber = studentRegistrationRequest.StudentIdNumber;
+        
+        if (string.IsNullOrWhiteSpace(studentRegistrationRequest.Password))
+            return AuthResult.Fail("Password is Required.");
+
+        if (studentRegistrationRequest.Password != studentRegistrationRequest.ConfirmPassword)
+            return AuthResult.Fail("Password and ConfirmPassword do not match.");
 
         // Check if the student ID number is already registered
         Student? existingStudentWithIdNumber = await _studentRepository.GetByStudentIdNumberAsync(studentIdNumber);
@@ -93,7 +100,11 @@ public class AuthService : IAuthService
         if (existingStudentWithIdNumber != null)
             return AuthResult.Fail("Student ID Number is already registered.");
 
-        Student newStudent = studentRegistrationRequest.toEntity();
+        Student newStudent = studentRegistrationRequest.Adapt<Student>();
+        newStudent.PasswordHash = BCrypt.Net.BCrypt.HashPassword(studentRegistrationRequest.Password);
+        newStudent.CreatedAt = DateTime.UtcNow;
+        newStudent.UpdatedAt = DateTime.UtcNow;
+        newStudent.IsDeleted = false;
 
         await _studentRepository.AddStudentAsync(newStudent);
 
@@ -101,7 +112,7 @@ public class AuthService : IAuthService
 
         _logger.LogInformation("Registration successful for student ID {StudentId}", studentIdNumber);
 
-        DateTime expiration = DateTime.Now.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpiryInMinutes"]!));
+        DateTime expiration = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpiryInMinutes"]!));
 
         return AuthResult.Ok(token, expiration);
     }
