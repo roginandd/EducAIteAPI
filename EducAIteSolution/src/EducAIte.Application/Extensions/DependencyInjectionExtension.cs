@@ -1,4 +1,6 @@
 using EducAIte.Application.Interfaces;
+using EducAIte.Application.Services.Implementation;
+using EducAIte.Application.Services.Interface;
 using EducAIte.Application.Services;
 using EducAIte.Domain.Interfaces;
 using EducAIte.Infrastructure.Repositories;
@@ -14,9 +16,12 @@ namespace EducAIte.Application.Extensions;
 
         // Business Logic and Application Services
         services.AddScoped<IAuthService, AuthService>();
+        services.AddScoped<ICourseService, CourseService>();
+        services.AddScoped<IStudentService, StudentService>();
 
         // Repositories
         services.AddScoped<IStudentRepository, StudentRepository>();
+        services.AddScoped<ICourseRepository, CourseRepository>();
 
         return services;
       }
