@@ -1,20 +1,30 @@
+using System.Reflection;
 using System.Text;
+using EducAIte.Application.DTOs.Response;
+using EducAIte.Application.Extensions;
 using EducAIte.Application.Interfaces;
 using EducAIte.Application.Services;
+using EducAIte.Domain.Entities;
 using EducAIte.Domain.Interfaces;
 using EducAIte.Infrastructure.Data;
 using EducAIte.Infrastructure.Repositories;
+using Mapster;
+using MapsterMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
+
+builder.Services.AddApplicationLayer(); // extension method to register app services and configure Mapster
+
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
@@ -23,11 +33,7 @@ Console.WriteLine(connectionString);
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// Business Logic and Application Services
-builder.Services.AddScoped<IAuthService, AuthService>();
 
-// Repositories
-builder.Services.AddScoped<IStudentRepository, StudentRepository>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
