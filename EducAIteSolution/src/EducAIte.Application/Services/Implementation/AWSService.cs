@@ -19,8 +19,10 @@ public class AWSService(
     private readonly string _cloudFrontKeyPairId = cloudFrontKeyPairId;
     private readonly string _cloudFrontPrivateKey = cloudFrontPrivateKey;
 
-    public async Task<string> UploadFileAsync(IFormFile file)
+    public async Task<string> UploadFileAsync(IFormFile file, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var key = $"{Guid.NewGuid()}_{file.FileName}";
 
         using (var stream = file.OpenReadStream())
@@ -33,14 +35,16 @@ public class AWSService(
                 ContentType = file.ContentType
             };
 
-            await _s3Client.PutObjectAsync(request);
+            await _s3Client.PutObjectAsync(request, cancellationToken);
         }
 
         return key;
     }
 
-    public string GenerateSignedUrl(string key, TimeSpan validFor)
+    public string GenerateSignedUrl(string key, TimeSpan validFor, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         var expiry = (long)(DateTime.UtcNow.Add(validFor) - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
 
         var policy = $"{{\"Statement\":[{{\"Resource\":\"https://{_cloudFrontDomain}/{key}\",\"Condition\":{{\"DateLessThan\":{{\"AWS:EpochTime\":{expiry}}}}}}}]}}";
