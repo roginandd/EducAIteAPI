@@ -64,9 +64,11 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
             .HasDefaultValue(false);
 
         builder.HasIndex(s => s.StudentIdNumber)
+            .HasDatabaseName("UX_Students_StudentIdNumber")
             .IsUnique();
 
         builder.HasIndex(s => s.Email)
+            .HasDatabaseName("UX_Students_Email")
             .IsUnique();
 
         // Navigation properties - configured from the other entity side
@@ -74,5 +76,6 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
         // UploadedFiles relationship is configured in FileMetadataConfiguration
         // Flashcards relationship is configured in StudentFlashcardConfiguration
         // EnrolledCourses relationship is configured in StudentCourseConfiguration
+        // Certifications relationship is configured in CertificationConfiguration
     }
 }

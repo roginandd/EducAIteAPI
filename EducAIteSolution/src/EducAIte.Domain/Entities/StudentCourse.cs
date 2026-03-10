@@ -10,18 +10,19 @@ public class StudentCourse
 
     // Foreign Keys
     public long CourseId { get; set; }
-    public long StudentId { get; set; }
+    public long StudyLoadId { get; set; }
+    
+
+
 
     // Navigation Properties
     public Course Course { get; set; } = null!;
-    public Student Student { get; set; } = null!;
 
     public List<Grade> Grades { get; set; } = null!;
+
+    public StudyLoad StudyLoad { get; set; } = null!;
     
     // Additional Properties
-    public long StudyLoadId { get; set; }
-    public required SchoolYear SchoolYear { get; set; }
-    public int Semester { get; set; }
     public bool IsDeleted { get; set; }
     public DateTime CreatedAt {get; set;} = DateTime.UtcNow;
     public DateTime UpdatedAt {get; set;} = DateTime.UtcNow;

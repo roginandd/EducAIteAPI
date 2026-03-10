@@ -15,9 +15,6 @@ public class StudentCourseConfiguration : IEntityTypeConfiguration<StudentCourse
         builder.Property(sc => sc.StudentCourseId)
             .ValueGeneratedOnAdd();
 
-        builder.Property(sc => sc.Semester)
-            .IsRequired();
-
         builder.Property(sc => sc.CreatedAt)
             .IsRequired()
             .HasDefaultValueSql("timezone('utc', now())");
@@ -30,26 +27,25 @@ public class StudentCourseConfiguration : IEntityTypeConfiguration<StudentCourse
             .IsRequired()
             .HasDefaultValue(false);
 
-        // Foreign keys
+        // Relationships
         builder.HasOne(sc => sc.Course)
-            .WithMany()
+            .WithMany() 
             .HasForeignKey(sc => sc.CourseId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(sc => sc.Student)
-            .WithMany(s => s.EnrolledCourses)
-            .HasForeignKey(sc => sc.StudentId)
+        builder.HasOne(sc => sc.StudyLoad)
+            .WithMany() 
+            .HasForeignKey(sc => sc.StudyLoadId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Configure SchoolYear as owned entity
-        builder.OwnsOne(sc => sc.SchoolYear, sy =>
-        {
-            sy.Property(s => s.StartYear).HasColumnName("SchoolYearStart");
-            sy.Property(s => s.EndYear).HasColumnName("SchoolYearEnd");
-        });
-
-        // Composite index for performance
-        builder.HasIndex(sc => new { sc.StudentId, sc.CourseId })
+        builder.HasIndex(sc => new { sc.CourseId, sc.StudyLoadId })
+            .HasDatabaseName("UX_StudentCourses_Course_StudyLoad")
             .IsUnique();
+
+        builder.HasIndex(sc => sc.CourseId)
+            .HasDatabaseName("IX_StudentCourses_CourseId");
+
+        builder.HasIndex(sc => sc.StudyLoadId)
+            .HasDatabaseName("IX_StudentCourses_StudyLoadId");
     }
 }

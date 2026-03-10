@@ -25,6 +25,10 @@ public class NoteConfiguration : IEntityTypeConfiguration<Note>
         builder.Property(n => n.NoteContent)
             .IsRequired();
 
+        builder.Property(n => n.SequenceNumber)
+            .IsRequired()
+            .HasDefaultValue(0);
+
         builder.Property(n => n.CreatedAt)
             .IsRequired()
             .HasDefaultValueSql("timezone('utc', now())");
@@ -37,13 +41,17 @@ public class NoteConfiguration : IEntityTypeConfiguration<Note>
             .IsRequired()
             .HasDefaultValue(false);
 
-        // Foreign key
+        // Foreign key: Bidirectional mapping with Document
         builder.HasOne(n => n.Document)
-            .WithMany()
+            .WithMany(d => d.Notes)
             .HasForeignKey(n => n.DocumentId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasIndex(n => n.ExternalId)
+            .HasDatabaseName("UX_Notes_ExternalId")
             .IsUnique();
+
+        builder.HasIndex(n => n.DocumentId)
+            .HasDatabaseName("IX_Notes_DocumentId");
     }
 }

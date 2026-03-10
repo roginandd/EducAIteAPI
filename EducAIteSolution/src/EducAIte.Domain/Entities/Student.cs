@@ -43,6 +43,7 @@ public class Student
 
     public ICollection<StudentCourse> EnrolledCourses { get; set; } = new HashSet<StudentCourse>();
 
+    public ICollection<Certification> Certifications {get; set;} = new HashSet<Certification>();
 
     public override string ToString()
     {

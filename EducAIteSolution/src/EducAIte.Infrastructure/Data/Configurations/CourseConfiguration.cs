@@ -39,7 +39,7 @@ public class CourseConfiguration : IEntityTypeConfiguration<Course>
             .HasDefaultValue(false);
 
         builder.HasIndex(c => c.EDPCode)
-            .HasDatabaseName("IDX_Courses_EDPCode")
+            .HasDatabaseName("UX_Courses_EDPCode")
             .IsUnique();
     }
 }

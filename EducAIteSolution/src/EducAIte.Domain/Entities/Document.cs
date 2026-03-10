@@ -1,5 +1,6 @@
 namespace EducAIte.Domain.Entities;
 
+
 public class Document
 {
 
@@ -17,6 +18,9 @@ public class Document
     // Reference to the actual file
     public long FileMetadataId { get; set; }
     public FileMetadata FileMetadata { get; set; } = null!;
+
+    // Navigation Property for Notes
+    public ICollection<Note> Notes { get; set; } = new HashSet<Note>();
 
     // Aditional Properties
     public bool IsDeleted { get; set; }

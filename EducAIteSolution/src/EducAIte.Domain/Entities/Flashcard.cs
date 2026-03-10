@@ -14,6 +14,7 @@ public class Flashcard
     public long CourseId { get; set; }
     public Course Course { get; set; } = null!;
 
+
     // Foreign Key
     public long NoteId { get; set; }
     public Note? Note { get; set; }

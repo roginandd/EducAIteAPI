@@ -55,6 +55,7 @@ public class FlashcardConfiguration : IEntityTypeConfiguration<Flashcard>
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasIndex(f => f.ExternalId)
+            .HasDatabaseName("UX_Flashcards_ExternalId")
             .IsUnique();
     }
 }
