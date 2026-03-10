@@ -1,3 +1,4 @@
+using EducAIte.Application.DTOs.Request;
 using EducAIte.Application.DTOs.Response;
 using EducAIte.Domain.Entities;
 using Mapster;

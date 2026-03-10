@@ -1,3 +1,5 @@
+namespace EducAIte.Application.DTOs.Request;
+
 public record StudentRegistrationRequest
 {
     public required string FirstName { get; init; } = string.Empty;

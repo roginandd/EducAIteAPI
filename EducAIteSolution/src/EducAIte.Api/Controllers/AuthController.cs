@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using EducAIte.Application.Interfaces;
 using EducAIte.Application.DTOs.Request;
 using EducAIte.Application.DTOs.Response;
@@ -17,6 +18,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [AllowAnonymous]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var result = await _authService.Login(request);
