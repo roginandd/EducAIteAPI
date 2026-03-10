@@ -1,11 +1,8 @@
 using System.Reflection;
-using System.Text;
 using EducAIte.Application.Extensions;
 using EducAIte.Api.Swagger;
 using EducAIte.Infrastructure.Data;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -35,6 +32,8 @@ builder.Services.AddSwaggerGen(options =>
 });
 builder.Services.AddControllers();
 
+
+
 builder.Services.AddApplicationLayer(); // extension method to register app services and configure Mapster
 
 
@@ -44,34 +43,8 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-var jwtIssuer = builder.Configuration["Jwt:Issuer"]
-    ?? throw new InvalidOperationException("Missing configuration key: Jwt:Issuer");
-var jwtAudience = builder.Configuration["Jwt:Audience"]
-    ?? throw new InvalidOperationException("Missing configuration key: Jwt:Audience");
-var jwtKey = builder.Configuration["Jwt:Key"]
-    ?? throw new InvalidOperationException("Missing configuration key: Jwt:Key");
-
-if (jwtKey.Length < 32)
-{
-    throw new InvalidOperationException("Jwt:Key must be at least 32 characters for HMAC-SHA256.");
-}
-
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtIssuer,
-            ValidAudience = jwtAudience,
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtKey))
-        };
-    });
+builder.Services.AddAwsServices(builder.Configuration);
+builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
@@ -85,7 +58,7 @@ if (app.Environment.IsDevelopment())
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "My Web API v1");
         c.RoutePrefix = string.Empty; // Swagger UI at app root
-    });    
+    });
 }
 
 app.UseHttpsRedirection();
