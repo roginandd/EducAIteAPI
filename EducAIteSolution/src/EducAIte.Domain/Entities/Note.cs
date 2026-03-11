@@ -5,14 +5,12 @@ public class Note
     // Primary Key
     public long NoteId { get; private set; }
 
-    public Guid ExternalId { get; private set; }
-
     public string Name { get; private set; } = string.Empty;
 
     public string NoteContent { get; private set; } = string.Empty;
 
 
-    public long SequenceNumber { get; private set; } // To maintain the order of notes within a document
+    public decimal SequenceNumber { get; private set; } // Order within a document
 
     // Foreign Key
     public long DocumentId { get; private set; }
@@ -36,9 +34,8 @@ public class Note
     
 
     // Domain constructor
-    public Note (string name, string noteContent, long documentId, long sequenceNumber)
+    public Note (string name, string noteContent, long documentId, decimal sequenceNumber)
     {
-        ExternalId = Guid.NewGuid();
         Name = NormalizeNoteName(name);
         NoteContent = NormalizeNoteContent(noteContent);
         DocumentId = ValidateDocumentId(documentId);
@@ -48,7 +45,7 @@ public class Note
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateDetails(string name, string noteContent, long documentId, long sequenceNumber)
+    public void UpdateDetails(string name, string noteContent, long documentId)
     {
         if (IsDeleted)
             throw new InvalidOperationException("Cannot modify a deleted note.");
@@ -56,7 +53,6 @@ public class Note
         Name = NormalizeNoteName(name);
         NoteContent = NormalizeNoteContent(noteContent);
         DocumentId = ValidateDocumentId(documentId);
-        SequenceNumber = ValidateSequenceNumber(sequenceNumber);
 
         UpdatedAt = DateTime.UtcNow;
 
@@ -89,7 +85,7 @@ public class Note
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateSequenceNumber(long newSequenceNumber)
+    public void UpdateSequenceNumber(decimal newSequenceNumber)
     {
         if (IsDeleted)
             throw new InvalidOperationException("Cannot modify a deleted note.");
@@ -158,7 +154,7 @@ public class Note
         return documentId;
     }
 
-    private static long ValidateSequenceNumber(long sequenceNumber)
+    private static decimal ValidateSequenceNumber(decimal sequenceNumber)
     {
         if (sequenceNumber < 0)
             throw new ArgumentException("Sequence number cannot be negative.", nameof(sequenceNumber));
