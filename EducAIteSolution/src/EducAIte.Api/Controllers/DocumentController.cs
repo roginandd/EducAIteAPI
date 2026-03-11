@@ -23,7 +23,21 @@ public class DocumentController : ControllerBase
     [HttpGet("{sqid}")]
     public async Task<IActionResult> GetById(string sqid, CancellationToken cancellationToken)
     {
-        DocumentResponse? document = await _documentService.GetDocumentByIdAsync(sqid, cancellationToken);
+        if (!TryGetCurrentStudentId(out long studentId))
+        {
+            return Unauthorized(new { message = "Student ID claim is missing or invalid." });
+        }
+
+        DocumentResponse? document;
+        try
+        {
+            document = await _documentService.GetDocumentByIdAsync(sqid, studentId, cancellationToken);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+
         if (document is null)
         {
             return NotFound();
@@ -35,9 +49,19 @@ public class DocumentController : ControllerBase
     [HttpGet("student/{studentId:long}")]
     public async Task<IActionResult> GetByStudent(long studentId, CancellationToken cancellationToken)
     {
+        if (!TryGetCurrentStudentId(out long authenticatedStudentId))
+        {
+            return Unauthorized(new { message = "Student ID claim is missing or invalid." });
+        }
+
+        if (studentId != authenticatedStudentId)
+        {
+            return Forbid();
+        }
+
         try
         {
-            var documents = await _documentService.GetDocumentsByStudentAsync(studentId, cancellationToken);
+            var documents = await _documentService.GetDocumentsByStudentAsync(authenticatedStudentId, cancellationToken);
             return Ok(documents);
         }
         catch (ArgumentException ex)
@@ -47,6 +71,10 @@ public class DocumentController : ControllerBase
         catch (KeyNotFoundException ex)
         {
             return NotFound(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
         }
     }
 
@@ -65,9 +93,14 @@ public class DocumentController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateDocumentRequest request, CancellationToken cancellationToken)
     {
+        if (!TryGetCurrentStudentId(out long studentId))
+        {
+            return Unauthorized(new { message = "Student ID claim is missing or invalid." });
+        }
+
         try
         {
-            var createdDocument = await _documentService.CreateDocumentAsync(request, cancellationToken);
+            var createdDocument = await _documentService.CreateDocumentAsync(request, studentId, cancellationToken);
             return CreatedAtAction(nameof(GetById), new { sqid = createdDocument.Sqid }, createdDocument);
         }
         catch (ArgumentException ex)
@@ -82,14 +115,23 @@ public class DocumentController : ControllerBase
         {
             return Conflict(new { message = ex.Message });
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
     }
 
     [HttpPut("{sqid}")]
     public async Task<IActionResult> Update(string sqid, [FromBody] UpdateDocumentRequest request, CancellationToken cancellationToken)
     {
+        if (!TryGetCurrentStudentId(out long studentId))
+        {
+            return Unauthorized(new { message = "Student ID claim is missing or invalid." });
+        }
+
         try
         {
-            bool isUpdated = await _documentService.UpdateDocumentAsync(sqid, request, cancellationToken);
+            bool isUpdated = await _documentService.UpdateDocumentAsync(sqid, request, studentId, cancellationToken);
             if (!isUpdated)
             {
                 return NotFound();
@@ -109,12 +151,30 @@ public class DocumentController : ControllerBase
         {
             return Conflict(new { message = ex.Message });
         }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
     }
 
     [HttpDelete("{sqid}")]
     public async Task<IActionResult> Delete(string sqid, CancellationToken cancellationToken)
     {
-        bool isDeleted = await _documentService.DeleteDocumentAsync(sqid, cancellationToken);
+        if (!TryGetCurrentStudentId(out long studentId))
+        {
+            return Unauthorized(new { message = "Student ID claim is missing or invalid." });
+        }
+
+        bool isDeleted;
+        try
+        {
+            isDeleted = await _documentService.DeleteDocumentAsync(sqid, studentId, cancellationToken);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+
         if (!isDeleted)
         {
             return NotFound();

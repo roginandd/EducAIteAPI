@@ -27,6 +27,15 @@ public class DocumentRepository : IDocumentRepository
                 cancellationToken);
     }
 
+    public async Task<bool> IsOwnedByStudentAsync(long documentId, long studentId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Documents
+            .AsNoTracking()
+            .Where(document => document.DocumentId == documentId)
+            .Where(document => !document.Folder.IsDeleted && !document.FileMetadata.IsDeleted)
+            .AnyAsync(document => document.Folder.StudentId == studentId, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Document>> GetAllByStudentIdAsync(long studentId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Documents

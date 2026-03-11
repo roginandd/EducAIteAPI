@@ -5,6 +5,8 @@ namespace EducAIte.Domain.Interfaces;
 
 public interface INoteRepository
 {
+    Task<bool> IsOwnedByStudentAsync(long noteId, long studentId, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Note>> GetAllByDocumentIdAndStudentIdAsync(
         long documentId,
         long studentId,

@@ -11,11 +11,16 @@ public sealed class NoteOrderingService : INoteOrderingService
     private const int MaxUniqueConflictRetries = 3;
 
     private readonly INoteRepository _noteRepository;
+    private readonly IResourceOwnershipService _resourceOwnershipService;
     private readonly ISqidService _sqidService;
 
-    public NoteOrderingService(INoteRepository noteRepository, ISqidService sqidService)
+    public NoteOrderingService(
+        INoteRepository noteRepository,
+        IResourceOwnershipService resourceOwnershipService,
+        ISqidService sqidService)
     {
         _noteRepository = noteRepository;
+        _resourceOwnershipService = resourceOwnershipService;
         _sqidService = sqidService;
     }
 
@@ -33,16 +38,22 @@ public sealed class NoteOrderingService : INoteOrderingService
     }
 
     public async Task<bool> MoveBetweenAsync(
+        long studentId,
         string documentSqid,
         string noteSqid,
         string? previousNoteSqid,
         string? nextNoteSqid,
         CancellationToken cancellationToken = default)
     {
+        EnsureStudentIdIsValid(studentId);
+
         if (!TryDecodeDocumentAndNote(documentSqid, noteSqid, out long documentId, out long noteId))
         {
             return false;
         }
+
+        await _resourceOwnershipService.EnsureDocumentOwnedByStudentAsync(documentId, studentId, cancellationToken);
+        await _resourceOwnershipService.EnsureNoteOwnedByStudentAsync(noteId, studentId, cancellationToken);
 
         for (int attempt = 0; attempt <= MaxUniqueConflictRetries; attempt++)
         {
@@ -69,13 +80,16 @@ public sealed class NoteOrderingService : INoteOrderingService
         throw new InvalidOperationException("Unable to reorder note after retrying due to sequence conflicts.");
     }
 
-    public async Task RebalanceAsync(string documentSqid, CancellationToken cancellationToken = default)
+    public async Task RebalanceAsync(long studentId, string documentSqid, CancellationToken cancellationToken = default)
     {
+        EnsureStudentIdIsValid(studentId);
+
         if (!_sqidService.TryDecode(documentSqid, out long documentId))
         {
             throw new ArgumentException("DocumentSqid is invalid.");
         }
 
+        await _resourceOwnershipService.EnsureDocumentOwnedByStudentAsync(documentId, studentId, cancellationToken);
         await _noteRepository.RebalanceDocumentAsync(documentId, DefaultStep, cancellationToken);
     }
 
@@ -145,6 +159,14 @@ public sealed class NoteOrderingService : INoteOrderingService
     private static bool NeedsRebalance(decimal previous, decimal next)
     {
         return (next - previous) <= MinGapThreshold;
+    }
+
+    private static void EnsureStudentIdIsValid(long studentId)
+    {
+        if (studentId <= 0)
+        {
+            throw new ArgumentException("StudentId must be greater than zero.");
+        }
     }
 
     private bool TryDecodeDocumentAndNote(string documentSqid, string noteSqid, out long documentId, out long noteId)

@@ -12,28 +12,37 @@ public class DocumentService : IDocumentService
 {
     private readonly IDocumentRepository _documentRepository;
     private readonly IStudentRepository _studentRepository;
+    private readonly IResourceOwnershipService _resourceOwnershipService;
     private readonly ISqidService _sqidService;
     private readonly ILogger<DocumentService> _logger;
 
     public DocumentService(
         IDocumentRepository documentRepository,
         IStudentRepository studentRepository,
+        IResourceOwnershipService resourceOwnershipService,
         ISqidService sqidService,
         ILogger<DocumentService> logger)
     {
         _documentRepository = documentRepository;
         _studentRepository = studentRepository;
+        _resourceOwnershipService = resourceOwnershipService;
         _sqidService = sqidService;
         _logger = logger;
     }
 
-    public async Task<DocumentResponse?> GetDocumentByIdAsync(string sqid, CancellationToken cancellationToken = default)
+    public async Task<DocumentResponse?> GetDocumentByIdAsync(
+        string sqid,
+        long studentId,
+        CancellationToken cancellationToken = default)
     {
+        EnsureStudentIdIsValid(studentId);
+
         if (!_sqidService.TryDecode(sqid, out long documentId))
         {
             return null;
         }
 
+        await _resourceOwnershipService.EnsureDocumentOwnedByStudentAsync(documentId, studentId, cancellationToken);
         Document? document = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
         return document is null ? null : ToResponse(document);
     }
@@ -46,10 +55,14 @@ public class DocumentService : IDocumentService
         return documents.Select(ToResponse);
     }
 
-    public async Task<DocumentResponse> CreateDocumentAsync(CreateDocumentRequest request, CancellationToken cancellationToken = default)
+    public async Task<DocumentResponse> CreateDocumentAsync(
+        CreateDocumentRequest request,
+        long studentId,
+        CancellationToken cancellationToken = default)
     {
+        EnsureStudentIdIsValid(studentId);
         Document document = request.ToEntity();
-        await ValidateOwnershipAsync(document.FolderId, document.FileMetadataId, cancellationToken);
+        await ValidateOwnershipAsync(document.FolderId, document.FileMetadataId, studentId, cancellationToken);
 
         Document createdDocument = await _documentRepository.AddAsync(document, cancellationToken);
         _logger.LogInformation("Created document {DocumentId}", createdDocument.DocumentId);
@@ -57,13 +70,20 @@ public class DocumentService : IDocumentService
         return ToResponse(createdDocument);
     }
 
-    public async Task<bool> UpdateDocumentAsync(string sqid, UpdateDocumentRequest request, CancellationToken cancellationToken = default)
+    public async Task<bool> UpdateDocumentAsync(
+        string sqid,
+        UpdateDocumentRequest request,
+        long studentId,
+        CancellationToken cancellationToken = default)
     {
+        EnsureStudentIdIsValid(studentId);
+
         if (!_sqidService.TryDecode(sqid, out long documentId))
         {
             return false;
         }
 
+        await _resourceOwnershipService.EnsureDocumentOwnedByStudentAsync(documentId, studentId, cancellationToken);
         Document? existingDocument = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
         if (existingDocument is null)
         {
@@ -75,7 +95,7 @@ public class DocumentService : IDocumentService
             return true;
         }
 
-        await ValidateOwnershipAsync(request.FolderId, request.FileMetadataId, cancellationToken);
+        await ValidateOwnershipAsync(request.FolderId, request.FileMetadataId, studentId, cancellationToken);
 
         request.ApplyToEntity(existingDocument);
         await _documentRepository.UpdateAsync(existingDocument, cancellationToken);
@@ -84,13 +104,16 @@ public class DocumentService : IDocumentService
         return true;
     }
 
-    public async Task<bool> DeleteDocumentAsync(string sqid, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteDocumentAsync(string sqid, long studentId, CancellationToken cancellationToken = default)
     {
+        EnsureStudentIdIsValid(studentId);
+
         if (!_sqidService.TryDecode(sqid, out long documentId))
         {
             return false;
         }
 
+        await _resourceOwnershipService.EnsureDocumentOwnedByStudentAsync(documentId, studentId, cancellationToken);
         Document? existingDocument = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
         if (existingDocument is null)
         {
@@ -124,7 +147,11 @@ public class DocumentService : IDocumentService
         }
     }
 
-    private async Task ValidateOwnershipAsync(long folderId, long fileMetadataId, CancellationToken cancellationToken = default)
+    private async Task ValidateOwnershipAsync(
+        long folderId,
+        long fileMetadataId,
+        long studentId,
+        CancellationToken cancellationToken = default)
     {
         long? folderStudentId = await _documentRepository.GetFolderStudentIdAsync(folderId, cancellationToken);
         if (folderStudentId is null)
@@ -142,6 +169,11 @@ public class DocumentService : IDocumentService
         {
             throw new InvalidOperationException("Folder and file metadata must belong to the same student.");
         }
+
+        if (folderStudentId.Value != studentId)
+        {
+            throw new UnauthorizedAccessException("Folder and file metadata must belong to the authenticated student.");
+        }
     }
 
     private DocumentResponse ToResponse(Document document)
@@ -155,5 +187,13 @@ public class DocumentService : IDocumentService
             CreatedAt = document.CreatedAt,
             UpdatedAt = document.UpdatedAt
         };
+    }
+
+    private static void EnsureStudentIdIsValid(long studentId)
+    {
+        if (studentId <= 0)
+        {
+            throw new ArgumentException("StudentId must be greater than zero.");
+        }
     }
 }
