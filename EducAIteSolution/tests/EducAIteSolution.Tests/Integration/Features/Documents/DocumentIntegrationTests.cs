@@ -12,9 +12,11 @@ namespace EducAIteSolution.Tests.Integration.Features.Documents;
 public class DocumentIntegrationTests : IntegrationTestBase
 {
     private readonly IDocumentService _documentService;
+    private readonly ITestOutputHelper _outputHelper;
 
     public DocumentIntegrationTests(ITestOutputHelper outputHelper) : base(outputHelper)
     {
+        _outputHelper = outputHelper;
         _documentService = ServiceProvider.GetRequiredService<IDocumentService>();
     }
 
@@ -40,6 +42,8 @@ public class DocumentIntegrationTests : IntegrationTestBase
         Assert.Equal("Syllabus", persistedDocument.DocumentName);
         Assert.Equal(student.StudentId, persistedDocument.Folder.StudentId);
         Assert.Equal(student.StudentId, result.StudentId);
+
+        await DumpDatabaseStateAsync(nameof(CreateDocumentAsync_WithValidRequest_PersistsDocument));
     }
 
     [Fact]
@@ -57,6 +61,8 @@ public class DocumentIntegrationTests : IntegrationTestBase
 
         Assert.Single(results);
         Assert.Equal("Active Notes", results[0].DocumentName);
+
+        await DumpDatabaseStateAsync(nameof(GetDocumentsByStudentAsync_ReturnsOnlyNonDeletedDocuments));
     }
 
     [Fact]
@@ -83,6 +89,8 @@ public class DocumentIntegrationTests : IntegrationTestBase
         Assert.Equal("Reviewer Final", persistedDocument.DocumentName);
         Assert.Equal(replacementFolder.FolderId, persistedDocument.FolderId);
         Assert.Equal(replacementFile.FileMetaDataId, persistedDocument.FileMetadataId);
+
+        await DumpDatabaseStateAsync(nameof(UpdateDocumentAsync_WithNewValues_UpdatesPersistedDocument));
     }
 
     [Fact]
@@ -102,6 +110,8 @@ public class DocumentIntegrationTests : IntegrationTestBase
         Assert.True(deleted);
         Assert.True(persistedDocument.IsDeleted);
         Assert.Null(fetchedDocument);
+
+        await DumpDatabaseStateAsync(nameof(DeleteDocumentAsync_SoftDeletesDocument));
     }
 
     private async Task<Student> SeedStudentAsync(string studentIdNumber)
@@ -173,5 +183,25 @@ public class DocumentIntegrationTests : IntegrationTestBase
         await ApplicationDbContext.SaveChangesAsync();
 
         return document;
+    }
+
+    private async Task DumpDatabaseStateAsync(string testName)
+    {
+        List<Student> students = await ApplicationDbContext.Students.AsNoTracking().ToListAsync();
+        List<Folder> folders = await ApplicationDbContext.Folders.AsNoTracking().ToListAsync();
+        List<FileMetadata> files = await ApplicationDbContext.FileMetadata.AsNoTracking().ToListAsync();
+        List<Document> documents = await ApplicationDbContext.Documents
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .ToListAsync();
+
+        _outputHelper.WriteLine($"=== DB Snapshot: {testName} ===");
+        _outputHelper.WriteLine($"Students: {students.Count}, Folders: {folders.Count}, Files: {files.Count}, Documents(all): {documents.Count}");
+
+        foreach (Document document in documents)
+        {
+            _outputHelper.WriteLine(
+                $"DocumentId={document.DocumentId}, Name={document.DocumentName}, FolderId={document.FolderId}, FileMetadataId={document.FileMetadataId}, IsDeleted={document.IsDeleted}");
+        }
     }
 }
