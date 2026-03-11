@@ -7,8 +7,6 @@ public class Folder
 {
     public long FolderId { get; set; }
 
-    public Guid ExternalId { get; set; } = Guid.NewGuid();
-
     public long StudentId {get; set;}
 
     public Student Student { get; set; } = null!;

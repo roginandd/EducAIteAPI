@@ -15,9 +15,6 @@ public class FolderConfiguration : IEntityTypeConfiguration<Folder>
         builder.Property(f => f.FolderId)
             .ValueGeneratedOnAdd();
 
-        builder.Property(f => f.ExternalId)
-            .IsRequired();
-
         builder.Property(f => f.Semester)
             .IsRequired();
 
@@ -64,10 +61,6 @@ public class FolderConfiguration : IEntityTypeConfiguration<Folder>
             .WithMany(f => f.SubFolders)
             .HasForeignKey(f => f.ParentFolderId)
             .OnDelete(DeleteBehavior.Cascade);
-
-        builder.HasIndex(f => f.ExternalId)
-            .HasDatabaseName("UX_Folders_ExternalId")
-            .IsUnique();
 
         builder.HasIndex(f => new { f.StudentId, f.FolderKey })
             .HasDatabaseName("UX_Folders_Student_FolderKey")
