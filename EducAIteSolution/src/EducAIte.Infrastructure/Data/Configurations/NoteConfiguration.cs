@@ -30,12 +30,10 @@ public class NoteConfiguration : IEntityTypeConfiguration<Note>
             .HasDefaultValue(0);
 
         builder.Property(n => n.CreatedAt)
-            .IsRequired()
-            .HasDefaultValueSql("timezone('utc', now())");
+            .IsRequired();
 
         builder.Property(n => n.UpdatedAt)
-            .IsRequired()
-            .HasDefaultValueSql("timezone('utc', now())");
+            .IsRequired();
 
         builder.Property(n => n.IsDeleted)
             .IsRequired()
@@ -45,7 +43,7 @@ public class NoteConfiguration : IEntityTypeConfiguration<Note>
         builder.HasOne(n => n.Document)
             .WithMany(d => d.Notes)
             .HasForeignKey(n => n.DocumentId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(n => n.ExternalId)
             .HasDatabaseName("UX_Notes_ExternalId")
@@ -53,5 +51,7 @@ public class NoteConfiguration : IEntityTypeConfiguration<Note>
 
         builder.HasIndex(n => n.DocumentId)
             .HasDatabaseName("IX_Notes_DocumentId");
+
+        builder.HasQueryFilter(note => !note.IsDeleted);
     }
 }
