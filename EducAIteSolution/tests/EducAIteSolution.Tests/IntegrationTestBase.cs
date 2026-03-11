@@ -1,8 +1,8 @@
 using EducAIte.Application.Interfaces;
+using EducAIte.Application.Extensions;
 using EducAIte.Application.Services;
 using EducAIte.Domain.Interfaces;
 using EducAIte.Infrastructure.Data;
-using EducAIte.Infrastructure.Repositories;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -54,8 +54,7 @@ public abstract class IntegrationTestBase : IDisposable
         {
             builder.SetMinimumLevel(LogLevel.Debug);
         });
-        services.AddScoped<IAuthService, AuthService>();
-        services.AddScoped<IStudentRepository, StudentRepository>();
+        services.AddApplicationLayer();
 
         // 4. Build and Assign
         ServiceProvider = services.BuildServiceProvider();

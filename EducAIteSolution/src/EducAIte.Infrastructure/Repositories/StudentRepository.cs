@@ -12,9 +12,10 @@ public class StudentRepository : IStudentRepository
     public StudentRepository(ApplicationDbContext context) => _context = context;
 
 
-    public async Task<Student?> GetByStudentIdAsync(long studentId)
+    public async Task<Student?> GetByStudentIdAsync(long studentId, CancellationToken cancellationToken = default)
     {
-        Student? student = await _context.Students.FirstOrDefaultAsync(student => student.StudentId == studentId);
+        Student? student = await _context.Students
+            .FirstOrDefaultAsync(student => student.StudentId == studentId, cancellationToken);
 
         if (student == null)
            return null;
@@ -22,9 +23,10 @@ public class StudentRepository : IStudentRepository
         return student;
     }
 
-    public async Task<Student?> GetByStudentIdNumberAsync(string studentIdNumber)
+    public async Task<Student?> GetByStudentIdNumberAsync(string studentIdNumber, CancellationToken cancellationToken = default)
     {
-        Student? student = await _context.Students.FirstOrDefaultAsync(student => student.StudentIdNumber == studentIdNumber);
+        Student? student = await _context.Students
+            .FirstOrDefaultAsync(student => student.StudentIdNumber == studentIdNumber, cancellationToken);
 
         if (student == null)
             return null;
@@ -32,11 +34,11 @@ public class StudentRepository : IStudentRepository
         return student;
     }
 
-    public async Task<Student> AddStudentAsync(Student student)
+    public async Task<Student> AddStudentAsync(Student student, CancellationToken cancellationToken = default)
     {
-        await _context.Students.AddAsync(student);
+        await _context.Students.AddAsync(student, cancellationToken);
         
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
         return student;
     }
     

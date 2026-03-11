@@ -5,8 +5,6 @@ public class Flashcard
     // Primary Key
     public long FlashcardId { get; set; }
 
-    public Guid ExternalId { get; set; } = Guid.NewGuid();
-
     public string Question { get; set; } = string.Empty;
 
     public string Answer { get; set; } = string.Empty;

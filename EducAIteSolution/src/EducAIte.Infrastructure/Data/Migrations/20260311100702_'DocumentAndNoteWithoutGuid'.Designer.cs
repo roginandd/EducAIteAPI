@@ -3,6 +3,7 @@ using System;
 using EducAIte.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260311100702_'DocumentAndNoteWithoutGuid'")]
+    partial class DocumentAndNoteWithoutGuid
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -394,19 +397,18 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.Property<decimal>("SequenceNumber")
+                    b.Property<long>("SequenceNumber")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("numeric(30,15)")
-                        .HasDefaultValue(100m);
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("NoteId");
 
-                    b.HasIndex("DocumentId", "SequenceNumber")
-                        .IsUnique()
-                        .HasDatabaseName("IX_Notes_DocumentId_SequenceNumber");
+                    b.HasIndex("DocumentId")
+                        .HasDatabaseName("IX_Notes_DocumentId");
 
                     b.ToTable("Notes", (string)null);
                 });

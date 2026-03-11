@@ -15,9 +15,6 @@ public class NoteConfiguration : IEntityTypeConfiguration<Note>
         builder.Property(n => n.NoteId)
             .ValueGeneratedOnAdd();
 
-        builder.Property(n => n.ExternalId)
-            .IsRequired();
-
         builder.Property(n => n.Name)
             .IsRequired()
             .HasMaxLength(200);
@@ -27,15 +24,14 @@ public class NoteConfiguration : IEntityTypeConfiguration<Note>
 
         builder.Property(n => n.SequenceNumber)
             .IsRequired()
-            .HasDefaultValue(0);
+            .HasColumnType("numeric(30,15)")
+            .HasDefaultValue(100m);
 
         builder.Property(n => n.CreatedAt)
-            .IsRequired()
-            .HasDefaultValueSql("timezone('utc', now())");
+            .IsRequired();
 
         builder.Property(n => n.UpdatedAt)
-            .IsRequired()
-            .HasDefaultValueSql("timezone('utc', now())");
+            .IsRequired();
 
         builder.Property(n => n.IsDeleted)
             .IsRequired()
@@ -45,13 +41,12 @@ public class NoteConfiguration : IEntityTypeConfiguration<Note>
         builder.HasOne(n => n.Document)
             .WithMany(d => d.Notes)
             .HasForeignKey(n => n.DocumentId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(n => n.ExternalId)
-            .HasDatabaseName("UX_Notes_ExternalId")
-            .IsUnique();
+        builder.HasIndex(n => new { n.DocumentId, n.SequenceNumber })
+            .IsUnique()
+            .HasDatabaseName("IX_Notes_DocumentId_SequenceNumber");
 
-        builder.HasIndex(n => n.DocumentId)
-            .HasDatabaseName("IX_Notes_DocumentId");
+        builder.HasQueryFilter(note => !note.IsDeleted);
     }
 }

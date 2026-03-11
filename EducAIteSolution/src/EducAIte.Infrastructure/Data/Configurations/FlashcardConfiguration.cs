@@ -15,9 +15,6 @@ public class FlashcardConfiguration : IEntityTypeConfiguration<Flashcard>
         builder.Property(f => f.FlashcardId)
             .ValueGeneratedOnAdd();
 
-        builder.Property(f => f.ExternalId)
-            .IsRequired();
-
         builder.Property(f => f.Question)
             .IsRequired()
             .HasMaxLength(1000);
@@ -54,8 +51,5 @@ public class FlashcardConfiguration : IEntityTypeConfiguration<Flashcard>
             .HasForeignKey(f => f.DocumentId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        builder.HasIndex(f => f.ExternalId)
-            .HasDatabaseName("UX_Flashcards_ExternalId")
-            .IsUnique();
     }
 }

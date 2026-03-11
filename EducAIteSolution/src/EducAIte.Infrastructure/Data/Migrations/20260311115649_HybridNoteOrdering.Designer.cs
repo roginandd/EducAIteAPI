@@ -3,6 +3,7 @@ using System;
 using EducAIte.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260311115649_HybridNoteOrdering")]
+    partial class HybridNoteOrdering
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -405,7 +408,6 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                     b.HasKey("NoteId");
 
                     b.HasIndex("DocumentId", "SequenceNumber")
-                        .IsUnique()
                         .HasDatabaseName("IX_Notes_DocumentId_SequenceNumber");
 
                     b.ToTable("Notes", (string)null);

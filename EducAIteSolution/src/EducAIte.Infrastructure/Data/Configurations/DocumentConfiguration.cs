@@ -15,20 +15,15 @@ public class DocumentConfiguration : IEntityTypeConfiguration<Document>
         builder.Property(d => d.DocumentId)
             .ValueGeneratedOnAdd();
 
-        builder.Property(d => d.ExternalId)
-            .IsRequired();
-
         builder.Property(d => d.DocumentName)
             .IsRequired()
             .HasMaxLength(255);
 
         builder.Property(d => d.CreatedAt)
-            .IsRequired()
-            .HasDefaultValueSql("timezone('utc', now())");
+            .IsRequired();
 
         builder.Property(d => d.UpdatedAt)
-            .IsRequired()
-            .HasDefaultValueSql("timezone('utc', now())");
+            .IsRequired();
 
         builder.Property(d => d.IsDeleted)
             .IsRequired()
@@ -38,15 +33,13 @@ public class DocumentConfiguration : IEntityTypeConfiguration<Document>
         builder.HasOne(d => d.Folder)
             .WithMany(f => f.Documents)
             .HasForeignKey(d => d.FolderId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(d => d.FileMetadata)
             .WithMany()
             .HasForeignKey(d => d.FileMetadataId)
             .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasIndex(d => d.ExternalId)
-            .HasDatabaseName("UX_Documents_ExternalId")
-            .IsUnique();
+        builder.HasQueryFilter(document => !document.IsDeleted);
     }
 }

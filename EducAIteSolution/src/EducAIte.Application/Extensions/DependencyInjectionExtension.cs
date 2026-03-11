@@ -17,6 +17,10 @@ namespace EducAIte.Application.Extensions;
         // Business Logic and Application Services
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ICourseService, CourseService>();
+        services.AddScoped<IDocumentService, DocumentService>();
+        services.AddScoped<INoteService, NoteService>();
+        services.AddScoped<INoteOrderingService, NoteOrderingService>();
+        services.AddSingleton<ISqidService, SqidService>();
         services.AddScoped<IStudentService, StudentService>();
         services.AddScoped<IStudyLoadService, StudyLoadService>();
 
@@ -24,6 +28,8 @@ namespace EducAIte.Application.Extensions;
         services.AddScoped<IStudentRepository, StudentRepository>();
         services.AddScoped<ICourseRepository, CourseRepository>();
         services.AddScoped<IStudyLoadRepository, StudyLoadRepository>();
+        services.AddScoped<IDocumentRepository, DocumentRepository>();
+        services.AddScoped<INoteRepository, NoteRepository>();
 
         return services;
       }
