@@ -45,7 +45,6 @@ public class DocumentService : IDocumentService
             return null;
 
         await _resourceOwnershipService.EnsureDocumentOwnedByStudentAsync(documentId, studentId, cancellationToken);
-
         Document? document = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
 
         return document is null ? null : ToResponse(document);
@@ -68,9 +67,7 @@ public class DocumentService : IDocumentService
         CancellationToken cancellationToken = default)
     {
         EnsureStudentIdIsValid(studentId);
-
         Document document = request.ToEntity();
-
         await ValidateOwnershipAsync(document.FolderId, document.FileMetadataId, studentId, cancellationToken);
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
@@ -111,7 +108,6 @@ public class DocumentService : IDocumentService
             return false;
 
         await _resourceOwnershipService.EnsureDocumentOwnedByStudentAsync(documentId, studentId, cancellationToken);
-
         Document? existingDocument = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
         if (existingDocument is null)
             return false;
@@ -135,7 +131,6 @@ public class DocumentService : IDocumentService
             _logger.LogError(ex, "Error occurred while updating document {DocumentSqid}", sqid);
             throw;
         }
-
         _logger.LogInformation("Updated document {DocumentSqid}", sqid);
 
         return true;
@@ -152,7 +147,6 @@ public class DocumentService : IDocumentService
             return false;
 
         await _resourceOwnershipService.EnsureDocumentOwnedByStudentAsync(documentId, studentId, cancellationToken);
-
         Document? existingDocument = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
         if (existingDocument is null)
             return false;
@@ -211,7 +205,9 @@ public class DocumentService : IDocumentService
             throw new InvalidOperationException("Folder and file metadata must belong to the same student.");
 
         if (folderStudentId.Value != studentId)
+        {
             throw new UnauthorizedAccessException("Folder and file metadata must belong to the authenticated student.");
+        }
     }
 
     private DocumentResponse ToResponse(Document document) => new()
