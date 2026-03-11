@@ -9,12 +9,10 @@ public sealed class DocumentMappingConfig : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
-        config.NewConfig<Document, DocumentResponse>()
-            .Map(destination => destination.StudentId, source => source.Folder.StudentId);
+        config.NewConfig<Document, DocumentResponse>();
 
         config.NewConfig<CreateDocumentRequest, Document>()
             .Ignore(destination => destination.DocumentId)
-            .Ignore(destination => destination.ExternalId)
             .Ignore(destination => destination.Folder)
             .Ignore(destination => destination.FileMetadata)
             .Ignore(destination => destination.Notes)
@@ -24,7 +22,6 @@ public sealed class DocumentMappingConfig : IRegister
 
         config.NewConfig<UpdateDocumentRequest, Document>()
             .Ignore(destination => destination.DocumentId)
-            .Ignore(destination => destination.ExternalId)
             .Ignore(destination => destination.Folder)
             .Ignore(destination => destination.FileMetadata)
             .Ignore(destination => destination.Notes)

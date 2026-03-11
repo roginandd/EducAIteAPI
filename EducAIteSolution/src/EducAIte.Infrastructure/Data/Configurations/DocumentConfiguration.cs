@@ -15,9 +15,6 @@ public class DocumentConfiguration : IEntityTypeConfiguration<Document>
         builder.Property(d => d.DocumentId)
             .ValueGeneratedOnAdd();
 
-        builder.Property(d => d.ExternalId)
-            .IsRequired();
-
         builder.Property(d => d.DocumentName)
             .IsRequired()
             .HasMaxLength(255);
@@ -42,10 +39,6 @@ public class DocumentConfiguration : IEntityTypeConfiguration<Document>
             .WithMany()
             .HasForeignKey(d => d.FileMetadataId)
             .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasIndex(d => d.ExternalId)
-            .HasDatabaseName("UX_Documents_ExternalId")
-            .IsUnique();
 
         builder.HasQueryFilter(document => !document.IsDeleted);
     }

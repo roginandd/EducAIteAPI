@@ -12,22 +12,30 @@ public class DocumentService : IDocumentService
 {
     private readonly IDocumentRepository _documentRepository;
     private readonly IStudentRepository _studentRepository;
+    private readonly ISqidService _sqidService;
     private readonly ILogger<DocumentService> _logger;
 
     public DocumentService(
         IDocumentRepository documentRepository,
         IStudentRepository studentRepository,
+        ISqidService sqidService,
         ILogger<DocumentService> logger)
     {
         _documentRepository = documentRepository;
         _studentRepository = studentRepository;
+        _sqidService = sqidService;
         _logger = logger;
     }
 
-    public async Task<DocumentResponse?> GetDocumentByIdAsync(long id, CancellationToken cancellationToken = default)
+    public async Task<DocumentResponse?> GetDocumentByIdAsync(string sqid, CancellationToken cancellationToken = default)
     {
-        Document? document = await _documentRepository.GetByIdAsync(id, cancellationToken);
-        return document?.ToResponse();
+        if (!_sqidService.TryDecode(sqid, out long documentId))
+        {
+            return null;
+        }
+
+        Document? document = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
+        return document is null ? null : ToResponse(document);
     }
 
     public async Task<IEnumerable<DocumentResponse>> GetDocumentsByStudentAsync(long studentId, CancellationToken cancellationToken = default)
@@ -35,7 +43,7 @@ public class DocumentService : IDocumentService
         await EnsureStudentExistsAsync(studentId, cancellationToken);
 
         IReadOnlyList<Document> documents = await _documentRepository.GetAllByStudentIdAsync(studentId, cancellationToken);
-        return documents.Select(document => document.ToResponse());
+        return documents.Select(ToResponse);
     }
 
     public async Task<DocumentResponse> CreateDocumentAsync(CreateDocumentRequest request, CancellationToken cancellationToken = default)
@@ -46,12 +54,17 @@ public class DocumentService : IDocumentService
         Document createdDocument = await _documentRepository.AddAsync(document, cancellationToken);
         _logger.LogInformation("Created document {DocumentId}", createdDocument.DocumentId);
 
-        return createdDocument.ToResponse();
+        return ToResponse(createdDocument);
     }
 
-    public async Task<bool> UpdateDocumentAsync(long id, UpdateDocumentRequest request, CancellationToken cancellationToken = default)
+    public async Task<bool> UpdateDocumentAsync(string sqid, UpdateDocumentRequest request, CancellationToken cancellationToken = default)
     {
-        Document? existingDocument = await _documentRepository.GetByIdAsync(id, cancellationToken);
+        if (!_sqidService.TryDecode(sqid, out long documentId))
+        {
+            return false;
+        }
+
+        Document? existingDocument = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
         if (existingDocument is null)
         {
             return false;
@@ -67,20 +80,25 @@ public class DocumentService : IDocumentService
         request.ApplyToEntity(existingDocument);
         await _documentRepository.UpdateAsync(existingDocument, cancellationToken);
 
-        _logger.LogInformation("Updated document {DocumentId}", id);
+        _logger.LogInformation("Updated document {DocumentSqid}", sqid);
         return true;
     }
 
-    public async Task<bool> DeleteDocumentAsync(long id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteDocumentAsync(string sqid, CancellationToken cancellationToken = default)
     {
-        Document? existingDocument = await _documentRepository.GetByIdAsync(id, cancellationToken);
+        if (!_sqidService.TryDecode(sqid, out long documentId))
+        {
+            return false;
+        }
+
+        Document? existingDocument = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
         if (existingDocument is null)
         {
             return false;
         }
 
-        await _documentRepository.DeleteAsync(id, cancellationToken);
-        _logger.LogInformation("Deleted document {DocumentId}", id);
+        await _documentRepository.DeleteAsync(documentId, cancellationToken);
+        _logger.LogInformation("Deleted document {DocumentSqid}", sqid);
 
         return true;
     }
@@ -124,5 +142,18 @@ public class DocumentService : IDocumentService
         {
             throw new InvalidOperationException("Folder and file metadata must belong to the same student.");
         }
+    }
+
+    private DocumentResponse ToResponse(Document document)
+    {
+        return new DocumentResponse
+        {
+            Sqid = _sqidService.Encode(document.DocumentId),
+            DocumentName = document.DocumentName,
+            FolderSqid = _sqidService.Encode(document.FolderId),
+            FileMetadataSqid = _sqidService.Encode(document.FileMetadataId),
+            CreatedAt = document.CreatedAt,
+            UpdatedAt = document.UpdatedAt
+        };
     }
 }

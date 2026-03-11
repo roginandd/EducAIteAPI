@@ -5,9 +5,6 @@ public class Document
     // Primary Key
     public long DocumentId { get; private set; }
 
-    // Public identifier safe for external exposure
-    public Guid ExternalId { get; private set; }
-
     // Business fields
     public string DocumentName { get; private set; } = string.Empty;
 
@@ -21,7 +18,7 @@ public class Document
 
     // Navigation Property
     private readonly HashSet<Note> _notes = new();
-    public IReadOnlyCollection<Note> Notes => _notes;
+    public IReadOnlyCollection<Note> Notes => _notes.AsReadOnly();
 
     // Soft delete flag
     public bool IsDeleted { get; private set; }
@@ -35,7 +32,6 @@ public class Document
     // Domain constructor
     public Document(string documentName, long folderId, long fileMetadataId)
     {
-        ExternalId = Guid.NewGuid();
         DocumentName = NormalizeDocumentName(documentName);
         FolderId = ValidateFolderId(folderId);
         FileMetadataId = ValidateFileMetadataId(fileMetadataId);

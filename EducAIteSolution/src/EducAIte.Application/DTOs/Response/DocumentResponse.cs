@@ -2,17 +2,13 @@ namespace EducAIte.Application.DTOs.Response;
 
 public record DocumentResponse
 {
-    public long DocumentId { get; init; }
-
-    public Guid ExternalId { get; init; }
+    public string Sqid { get; init; } = string.Empty;
 
     public string DocumentName { get; init; } = string.Empty;
 
-    public long FolderId { get; init; }
+    public string FolderSqid { get; init; } = string.Empty;
 
-    public long FileMetadataId { get; init; }
-
-    public long StudentId { get; init; }
+    public string FileMetadataSqid { get; init; } = string.Empty;
 
     public DateTime CreatedAt { get; init; }
 
