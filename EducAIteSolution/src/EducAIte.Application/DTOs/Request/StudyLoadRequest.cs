@@ -1,6 +1,5 @@
 namespace EducAIte.Application.DTOs.Request;
 
-
 /// <summary>
 /// Data Transfer Object for creating a new StudyLoad.
 /// </summary>
