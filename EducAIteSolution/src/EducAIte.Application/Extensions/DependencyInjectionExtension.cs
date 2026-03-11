@@ -19,6 +19,8 @@ namespace EducAIte.Application.Extensions;
         services.AddScoped<ICourseService, CourseService>();
         services.AddScoped<IDocumentService, DocumentService>();
         services.AddScoped<INoteService, NoteService>();
+        services.AddScoped<INoteOrderingService, NoteOrderingService>();
+        services.AddSingleton<ISqidService, SqidService>();
         services.AddScoped<IStudentService, StudentService>();
 
         // Repositories

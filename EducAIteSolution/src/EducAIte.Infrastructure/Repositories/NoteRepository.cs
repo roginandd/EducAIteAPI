@@ -15,17 +15,43 @@ public sealed class NoteRepository : INoteRepository
         _context = context;
     }
 
-    public async Task<IReadOnlyList<Note>> GetAllByDocumentIdAsync(long documentId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Note>> GetAllByDocumentIdAndStudentIdAsync(
+        long documentId,
+        long studentId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _context
+            .Notes
+            .AsNoTracking()
+            .Include(n => n.Document)
+            .ThenInclude(d => d.Folder)
+            .Where(n => n.DocumentId == documentId)
+            .Where(n => n.Document.Folder.StudentId == studentId)
+            .OrderBy(n => n.SequenceNumber)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Note>> GetAllByStudentIdAsync(long studentId, CancellationToken cancellationToken = default)
     {
         IReadOnlyList<Note> notes = await _context
             .Notes
             .AsNoTracking()
             .Include(n => n.Document)
-            .Where(n => n.DocumentId == documentId)
-            .OrderBy(n => n.SequenceNumber) 
+            .ThenInclude(d => d.Folder)
+            .Where(n => n.Document.Folder.StudentId == studentId)
+            .OrderBy(n => n.SequenceNumber)
             .ToListAsync(cancellationToken);
 
-            return notes;
+        return notes;
+    }
+
+    public async Task<Note?> GetLastByDocumentIdAsync(long documentId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Notes
+            .AsNoTracking()
+            .Where(n => n.DocumentId == documentId)
+            .OrderByDescending(n => n.SequenceNumber)
+            .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<Note> AddAsync(Note note, CancellationToken cancellationToken = default)
@@ -33,7 +59,7 @@ public sealed class NoteRepository : INoteRepository
         _context.Notes.Add(note);
         await _context.SaveChangesAsync(cancellationToken);
 
-        return await GetByExternalIdAsync(note.ExternalId, cancellationToken) ?? note;
+        return await GetByIdAsync(note.NoteId, cancellationToken) ?? note;
     }
 
     public async Task UpdateAsync(Note note, CancellationToken cancellationToken = default)
@@ -48,32 +74,39 @@ public sealed class NoteRepository : INoteRepository
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task<Note?> GetByExternalIdAsync(Guid externalId, CancellationToken cancellationToken = default)
+    public async Task<Note?> GetByIdAsync(long noteId, CancellationToken cancellationToken = default)
     {
         Note? note = await _context
             .Notes
             .AsNoTracking()
             .Include(n => n.Document)
-            .FirstOrDefaultAsync(n => n.ExternalId == externalId, cancellationToken);
+            .FirstOrDefaultAsync(n => n.NoteId == noteId, cancellationToken);
 
         return note;
     }
 
-    public async Task<Note?> GetTrackedByExternalIdAsync(Guid externalId, CancellationToken cancellationToken = default)
+    public async Task<Note?> GetTrackedByIdAsync(long noteId, CancellationToken cancellationToken = default)
     {
         Note? note = await _context
             .Notes
             .Include(n => n.Document)
-            .FirstOrDefaultAsync(n => n.ExternalId == externalId, cancellationToken);
+            .FirstOrDefaultAsync(n => n.NoteId == noteId, cancellationToken);
 
         return note;
     }
 
-    public async Task<bool> SoftDeleteByExternalIdAsync(Guid externalId, CancellationToken cancellationToken = default)
+    public async Task<Note?> GetTrackedByIdAndDocumentIdAsync(long noteId, long documentId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Notes
+            .Include(n => n.Document)
+            .FirstOrDefaultAsync(n => n.NoteId == noteId && n.DocumentId == documentId, cancellationToken);
+    }
+
+    public async Task<bool> SoftDeleteByIdAsync(long noteId, CancellationToken cancellationToken = default)
     {
         Note? note = await _context
             .Notes
-            .FirstOrDefaultAsync(n => n.ExternalId == externalId, cancellationToken);
+            .FirstOrDefaultAsync(n => n.NoteId == noteId, cancellationToken);
 
         if (note is null)
         {
@@ -84,6 +117,26 @@ public sealed class NoteRepository : INoteRepository
         await _context.SaveChangesAsync(cancellationToken);
 
         return true;
+    }
+
+    public async Task RebalanceDocumentAsync(long documentId, decimal step, CancellationToken cancellationToken = default)
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+
+        List<Note> notes = await _context.Notes
+            .Where(n => n.DocumentId == documentId)
+            .OrderBy(n => n.SequenceNumber)
+            .ToListAsync(cancellationToken);
+
+        decimal current = step;
+        foreach (Note note in notes)
+        {
+            note.UpdateSequenceNumber(current);
+            current += step;
+        }
+
+        await _context.SaveChangesAsync(cancellationToken);
+        await transaction.CommitAsync(cancellationToken);
     }
 
 }

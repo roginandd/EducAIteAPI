@@ -5,15 +5,20 @@ namespace EducAIte.Application.Services.Interface;
 
 public interface INoteService
 {
-    Task<NoteResponse?> GetNoteByExternalIdAsync(Guid externalId, CancellationToken cancellationToken = default);
+    Task<NoteResponse?> GetNoteBySqidAsync(string sqid, CancellationToken cancellationToken = default);
 
-    Task<IEnumerable<NoteResponse>> GetNotesByDocumentAsync(long documentId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<NoteResponse>> GetNotesByDocumentAsync(
+        string documentSqid,
+        long studentId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<NoteResponse>> GetNotesByStudentAsync(long studentId, CancellationToken cancellationToken = default);
 
     Task<NoteResponse> CreateNoteAsync(CreateNoteRequest request, CancellationToken cancellationToken = default);
 
-    Task<bool> UpdateNoteAsync(Guid externalId, UpdateNoteRequest request, CancellationToken cancellationToken = default);
+    Task<bool> UpdateNoteAsync(string sqid, UpdateNoteRequest request, CancellationToken cancellationToken = default);
 
-    Task<bool> PatchNoteAsync(Guid externalId, PatchNoteRequest request, CancellationToken cancellationToken = default);
+    Task<bool> PatchNoteAsync(string sqid, PatchNoteRequest request, CancellationToken cancellationToken = default);
 
-    Task<bool> DeleteNoteAsync(Guid externalId, CancellationToken cancellationToken = default);
+    Task<bool> DeleteNoteAsync(string sqid, CancellationToken cancellationToken = default);
 }
