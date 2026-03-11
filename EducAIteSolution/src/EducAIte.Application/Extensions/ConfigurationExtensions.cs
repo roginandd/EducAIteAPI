@@ -4,9 +4,12 @@ using Amazon.S3;
 using EducAIte.Application.Services.Implementation;
 using EducAIte.Application.Services.Interface;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
+using Scalar.AspNetCore;
 
 namespace EducAIte.Application.Extensions;
 
@@ -65,9 +68,67 @@ public static class ConfigurationExtensions
                     ValidAudience = jwtAudience,
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
                 };
+
+    
             });
 
         return services;
+    }
+
+    public static IServiceCollection AddOpenApiWithBearerAuth(this IServiceCollection services)
+    {
+        const string bearerSchemeName = "Bearer";
+
+        services.AddOpenApi(options =>
+        {
+            options.AddDocumentTransformer((document, context, cancellationToken) =>
+            {
+                document.Components ??= new OpenApiComponents();
+                document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+                document.Components.SecuritySchemes[bearerSchemeName] = new OpenApiSecurityScheme
+                {
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "bearer",
+                    BearerFormat = "JWT",
+                    In = ParameterLocation.Header,
+                    Name = "Authorization",
+                    Description = "Enter JWT as: Bearer {your token}"
+                };
+
+                return Task.CompletedTask;
+            });
+
+            options.AddOperationTransformer((operation, context, cancellationToken) =>
+            {
+                operation.Security ??= [];
+                operation.Security.Add(new OpenApiSecurityRequirement
+                {
+                    {
+                        new OpenApiSecuritySchemeReference(bearerSchemeName),
+                        []
+                    }
+                });
+                return Task.CompletedTask;
+            });
+        });
+
+        return services;
+    }
+
+    public static WebApplication MapScalarWithAuth(this WebApplication app)
+    {
+        if (app.Environment.IsDevelopment())
+        {
+            app.MapOpenApi();
+            app.MapScalarApiReference(options =>
+            {
+                options
+                    .WithTitle("EducAIte API")
+                    .WithTheme(ScalarTheme.BluePlanet);
+            });
+        }
+
+        return app;
     }
 
     private static string GetRequiredConfig(IConfiguration configuration, string key)

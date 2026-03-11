@@ -1,41 +1,20 @@
-using System.Reflection;
 using EducAIte.Application.Extensions;
-using EducAIte.Api.Swagger;
 using EducAIte.Infrastructure.Data;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
-builder.Services.AddSwaggerGen(options =>
-{
-    options.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "EducAIte API",
-        Version = "v1"
-    });
-
-    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Description = "Enter JWT as: Bearer {your token}",
-        Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT"
-    });
-
-    options.OperationFilter<AuthorizeOperationFilter>();
-});
+builder.Services.AddOpenApiWithBearerAuth();
 builder.Services.AddControllers();
-
+builder.Services.AddProblemDetails();
 
 
 builder.Services.AddApplicationLayer(); // extension method to register app services and configure Mapster
-
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
@@ -50,16 +29,33 @@ builder.Services.AddAuthorization();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+app.MapScalarWithAuth();
+
+app.UseExceptionHandler(errorApp =>
 {
-    app.MapOpenApi();
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
+    errorApp.Run(async context =>
     {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "My Web API v1");
-        c.RoutePrefix = string.Empty; // Swagger UI at app root
+        Exception? exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+        (int statusCode, string title) = exception switch
+        {
+            ArgumentException => (400, "Bad Request"),
+            KeyNotFoundException => (404, "Resource Not Found"),
+            InvalidOperationException => (409, "Conflict"),
+            DbUpdateConcurrencyException => (409, "Concurrency Conflict"),
+            _ => (500, "Internal Server Error")
+        };
+
+        var problemDetails = new ProblemDetails
+        {
+            Status = statusCode,
+            Title = title,
+            Detail = exception?.Message
+        };
+
+        context.Response.StatusCode = statusCode;
+        await context.Response.WriteAsJsonAsync(problemDetails);
     });
-}
+});
 
 app.UseHttpsRedirection();
 app.UseAuthentication();
