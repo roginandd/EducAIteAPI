@@ -18,12 +18,14 @@ namespace EducAIte.Application.Extensions;
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ICourseService, CourseService>();
         services.AddScoped<IDocumentService, DocumentService>();
+        services.AddScoped<INoteService, NoteService>();
         services.AddScoped<IStudentService, StudentService>();
 
         // Repositories
         services.AddScoped<IStudentRepository, StudentRepository>();
         services.AddScoped<ICourseRepository, CourseRepository>();
         services.AddScoped<IDocumentRepository, DocumentRepository>();
+        services.AddScoped<INoteRepository, NoteRepository>();
 
         return services;
       }
