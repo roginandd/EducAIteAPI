@@ -6,7 +6,5 @@ public record UpdateNoteRequest
 
     public required string NoteContent { get; init; } = string.Empty;
 
-    public long DocumentId { get; init; }
-
-    public long SequenceNumber { get; init; }
+    public required string DocumentSqid { get; init; } = string.Empty;
 }

@@ -6,7 +6,5 @@ public record PatchNoteRequest
 
     public string? NoteContent { get; init; }
 
-    public long? DocumentId { get; init; }
-
-    public long? SequenceNumber { get; init; }
+    public string? DocumentSqid { get; init; }
 }
