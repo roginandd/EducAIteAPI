@@ -9,21 +9,20 @@ public static class NoteMappingExtensions
 {
     public static NoteResponse ToResponse(this Note note) => note.Adapt<NoteResponse>();
 
-    public static Note ToEntity(this CreateNoteRequest request)
+    public static Note ToEntity(this CreateNoteRequest request, long documentId, decimal sequenceNumber)
     {
         return new Note(
             request.Name,
             request.NoteContent,
-            request.DocumentId,
-            request.SequenceNumber);
+            documentId,
+            sequenceNumber);
     }
 
-    public static void ApplyToEntity(this UpdateNoteRequest request, Note note)
+    public static void ApplyToEntity(this UpdateNoteRequest request, Note note, long documentId)
     {
         note.UpdateDetails(
             request.Name,
             request.NoteContent,
-            request.DocumentId,
-            request.SequenceNumber);
+            documentId);
     }
 }
