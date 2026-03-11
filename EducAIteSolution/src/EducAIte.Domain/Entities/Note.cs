@@ -104,7 +104,7 @@ public class Note
         if (flashcard == null)
             throw new ArgumentNullException(nameof(flashcard), "Flashcard cannot be null.");
 
-        bool hasDifferentNoteId = flashcard.NoteId != 0 && flashcard.NoteId != NoteId;
+        bool hasDifferentNoteId = flashcard.NoteId.HasValue && flashcard.NoteId.Value != NoteId;
 
         if (hasDifferentNoteId)
             throw new InvalidOperationException("Flashcard is associated with a different note.");

@@ -42,13 +42,15 @@ public class FlashcardConfiguration : IEntityTypeConfiguration<Flashcard>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(f => f.Note)
-            .WithMany()
+            .WithMany(n => n.Flashcards)
             .HasForeignKey(f => f.NoteId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
 
         builder.HasOne(f => f.Document)
             .WithMany()
             .HasForeignKey(f => f.DocumentId)
+            .IsRequired(false)
             .OnDelete(DeleteBehavior.SetNull);
 
     }
