@@ -17,11 +17,13 @@ namespace EducAIte.Application.Extensions;
         // Business Logic and Application Services
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<ICourseService, CourseService>();
+        services.AddScoped<IDocumentService, DocumentService>();
         services.AddScoped<IStudentService, StudentService>();
 
         // Repositories
         services.AddScoped<IStudentRepository, StudentRepository>();
         services.AddScoped<ICourseRepository, CourseRepository>();
+        services.AddScoped<IDocumentRepository, DocumentRepository>();
 
         return services;
       }
