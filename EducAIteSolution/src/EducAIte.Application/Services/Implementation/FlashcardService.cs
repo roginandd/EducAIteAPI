@@ -12,6 +12,7 @@ public sealed class FlashcardService : IFlashcardService
 {
     private readonly IFlashcardRepository _flashcardRepository;
     private readonly IDocumentRepository _documentRepository;
+    private readonly IStudentFlashcardRepository _studentFlashcardRepository;
     private readonly IResourceOwnershipService _resourceOwnershipService;
     private readonly ISqidService _sqidService;
     private readonly ILogger<FlashcardService> _logger;
@@ -19,12 +20,14 @@ public sealed class FlashcardService : IFlashcardService
     public FlashcardService(
         IFlashcardRepository flashcardRepository,
         IDocumentRepository documentRepository,
+        IStudentFlashcardRepository studentFlashcardRepository,
         IResourceOwnershipService resourceOwnershipService,
         ISqidService sqidService,
         ILogger<FlashcardService> logger)
     {
         _flashcardRepository = flashcardRepository;
         _documentRepository = documentRepository;
+        _studentFlashcardRepository = studentFlashcardRepository;
         _resourceOwnershipService = resourceOwnershipService;
         _sqidService = sqidService;
         _logger = logger;
@@ -176,7 +179,8 @@ public sealed class FlashcardService : IFlashcardService
             return false;
         }
 
-        existing.MarkDeleted();
+        IReadOnlyList<StudentFlashcard> progressEntries = await _studentFlashcardRepository.GetTrackedByFlashcardIdAsync(flashcardId, cancellationToken);
+        existing.MarkDeletedWithProgress(progressEntries);
         await _flashcardRepository.UpdateAsync(existing, cancellationToken);
         _logger.LogInformation("Deleted flashcard {FlashcardSqid}", flashcardSqid);
 
