@@ -1,3 +1,5 @@
+using EducAIte.Domain.Enum;
+
 namespace EducAIte.Infrastructure.Data.Configurations;
 
 using EducAIte.Domain.Entities;
@@ -21,6 +23,27 @@ public class StudentFlashcardConfiguration : IEntityTypeConfiguration<StudentFla
         builder.Property(sf => sf.WrongCount)
             .HasDefaultValue(0);
 
+        builder.Property(sf => sf.ConsecutiveCorrectCount)
+            .HasDefaultValue(0);
+
+        builder.Property(sf => sf.ReviewCount)
+            .HasDefaultValue(0);
+
+        builder.Property(sf => sf.LapseCount)
+            .HasDefaultValue(0);
+
+        builder.Property(sf => sf.NextReviewAt)
+            .IsRequired()
+            .HasDefaultValueSql("timezone('utc', now())");
+
+        builder.Property(sf => sf.LastReviewedAt);
+
+        builder.Property(sf => sf.State)
+            .HasConversion<int>()
+            .HasDefaultValue(FlashcardReviewState.New);
+
+        builder.Property(sf => sf.LastReviewOutcome)
+            .HasConversion<int?>();
 
         builder.Property(sf => sf.CreatedAt)
             .IsRequired()
@@ -34,6 +57,8 @@ public class StudentFlashcardConfiguration : IEntityTypeConfiguration<StudentFla
             .IsRequired()
             .HasDefaultValue(false);
 
+        builder.HasQueryFilter(sf => !sf.IsDeleted);
+
         // Foreign keys
         builder.HasOne(sf => sf.Student)
             .WithMany(s => s.StudentFlashcards)
@@ -41,12 +66,16 @@ public class StudentFlashcardConfiguration : IEntityTypeConfiguration<StudentFla
             .OnDelete(DeleteBehavior.Cascade);
 
         builder.HasOne(sf => sf.Flashcard)
-            .WithMany()
+            .WithMany(f => f.StudentFlashcards)
             .HasForeignKey(sf => sf.FlashcardId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Composite unique index
         builder.HasIndex(sf => new { sf.StudentId, sf.FlashcardId })
             .IsUnique();
+
+        builder.HasIndex(sf => new { sf.StudentId, sf.NextReviewAt });
+
+        builder.HasIndex(sf => new { sf.StudentId, sf.State, sf.NextReviewAt });
     }
 }

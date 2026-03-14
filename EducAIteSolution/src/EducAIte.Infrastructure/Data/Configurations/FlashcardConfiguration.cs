@@ -41,5 +41,8 @@ public class FlashcardConfiguration : IEntityTypeConfiguration<Flashcard>
             .HasForeignKey(f => f.DocumentId)
             .OnDelete(DeleteBehavior.Restrict);
 
+        builder.Navigation(f => f.StudentFlashcards)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
     }
 }
