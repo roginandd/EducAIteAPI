@@ -9,31 +9,25 @@ public class Flashcard
 
     public string Answer { get; private set; } = string.Empty;
 
-    public long CourseId { get; private set; }
-    public Course Course { get; private set; } = null!;
-
-
     // Foreign Key
-    public long? NoteId { get; private set; }
-    public Note? Note { get; set; }
-
-    public long? DocumentId { get; private set; }
-    public Document? Document { get; set; }
+    public long DocumentId { get; private set; }
+    public Document Document { get; private set; } = null!;
     
     // Additional Properties
     public bool IsDeleted { get; private set; }
     public DateTime CreatedAt { get; private set; } = DateTime.UtcNow;
     public DateTime UpdatedAt { get; private set; } = DateTime.UtcNow;
 
+    // Navigational Properties
+    public ICollection<StudentFlashcard> StudentFlashcards { get; private set; } = new HashSet<StudentFlashcard>();
+
     private Flashcard() { }
 
-    public Flashcard(string question, string answer, long courseId, long? noteId, long? documentId)
+    public Flashcard(string question, string answer, long documentId)
     {
         Question = NormalizeQuestion(question);
         Answer = NormalizeAnswer(answer);
-        CourseId = ValidatePositiveId(courseId, nameof(courseId));
-        NoteId = ValidateOptionalId(noteId, nameof(noteId));
-        DocumentId = ValidateOptionalId(documentId, nameof(documentId));
+        DocumentId = ValidatePositiveId(documentId, nameof(documentId));
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
     }
@@ -46,31 +40,18 @@ public class Flashcard
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void AttachToNote(long noteId)
+    internal void AssignToDocument(Document document)
     {
+        ArgumentNullException.ThrowIfNull(document);
         EnsureNotDeleted();
-        NoteId = ValidatePositiveId(noteId, nameof(noteId));
-        UpdatedAt = DateTime.UtcNow;
-    }
 
-    public void DetachFromNote()
-    {
-        EnsureNotDeleted();
-        NoteId = null;
-        UpdatedAt = DateTime.UtcNow;
-    }
+        if (document.IsDeleted)
+        {
+            throw new InvalidOperationException("Cannot associate a flashcard with a deleted document.");
+        }
 
-    public void AttachToDocument(long documentId)
-    {
-        EnsureNotDeleted();
-        DocumentId = ValidatePositiveId(documentId, nameof(documentId));
-        UpdatedAt = DateTime.UtcNow;
-    }
-
-    public void DetachFromDocument()
-    {
-        EnsureNotDeleted();
-        DocumentId = null;
+        DocumentId = ValidatePositiveId(document.DocumentId, nameof(document.DocumentId));
+        Document = document;
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -135,13 +116,4 @@ public class Flashcard
         return id;
     }
 
-    private static long? ValidateOptionalId(long? id, string paramName)
-    {
-        if (id.HasValue && id.Value <= 0)
-        {
-            throw new ArgumentException("Id must be greater than zero when provided.", paramName);
-        }
-
-        return id;
-    }
 }

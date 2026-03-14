@@ -33,23 +33,13 @@ public class FlashcardConfiguration : IEntityTypeConfiguration<Flashcard>
             .IsRequired()
             .HasDefaultValue(false);
 
+        builder.HasQueryFilter(f => !f.IsDeleted);
+
         // Foreign keys
-        builder.HasOne(f => f.Course)
-            .WithMany()
-            .HasForeignKey(f => f.CourseId)
-            .OnDelete(DeleteBehavior.Restrict);
-
-        builder.HasOne(f => f.Note)
-            .WithMany(n => n.Flashcards)
-            .HasForeignKey(f => f.NoteId)
-            .IsRequired(false)
-            .OnDelete(DeleteBehavior.SetNull);
-
         builder.HasOne(f => f.Document)
-            .WithMany()
+            .WithMany(d => d.Flashcards)
             .HasForeignKey(f => f.DocumentId)
-            .IsRequired(false)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
 
     }
 }

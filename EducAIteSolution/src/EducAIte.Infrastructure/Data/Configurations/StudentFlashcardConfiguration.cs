@@ -36,7 +36,7 @@ public class StudentFlashcardConfiguration : IEntityTypeConfiguration<StudentFla
 
         // Foreign keys
         builder.HasOne(sf => sf.Student)
-            .WithMany(s => s.Flashcards)
+            .WithMany(s => s.StudentFlashcards)
             .HasForeignKey(sf => sf.StudentId)
             .OnDelete(DeleteBehavior.Cascade);
 
