@@ -153,8 +153,19 @@ public class NoteService : INoteService
         }
 
         await EnsureDocumentExistsAsync(documentId, cancellationToken);
+        existingNote.UpdateDetails(request.Name, request.NoteContent);
 
-        existingNote.UpdateDetails(request.Name, request.NoteContent, documentId);
+        if (existingNote.DocumentId != documentId)
+        {
+            Document? targetDocument = await _documentRepository.GetTrackedByIdAsync(documentId, cancellationToken);
+            if (targetDocument is null)
+            {
+                throw new KeyNotFoundException($"Document with ID {documentId} not found.");
+            }
+
+            targetDocument.ReassignNote(existingNote);
+        }
+
         await _noteRepository.UpdateAsync(existingNote, cancellationToken);
 
         _logger.LogInformation("Updated note {NoteSqid}", sqid);
@@ -205,7 +216,13 @@ public class NoteService : INoteService
 
             await _resourceOwnershipService.EnsureDocumentOwnedByStudentAsync(patchedDocumentId, studentId, cancellationToken);
             await EnsureDocumentExistsAsync(patchedDocumentId, cancellationToken);
-            existingNote.MoveToDocument(patchedDocumentId);
+            Document? targetDocument = await _documentRepository.GetTrackedByIdAsync(patchedDocumentId, cancellationToken);
+            if (targetDocument is null)
+            {
+                throw new KeyNotFoundException($"Document with ID {patchedDocumentId} not found.");
+            }
+
+            targetDocument.ReassignNote(existingNote);
         }
 
         await _noteRepository.UpdateAsync(existingNote, cancellationToken);

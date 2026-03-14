@@ -18,11 +18,10 @@ public static class NoteMappingExtensions
             sequenceNumber);
     }
 
-    public static void ApplyToEntity(this UpdateNoteRequest request, Note note, long documentId)
+    public static void ApplyToEntity(this UpdateNoteRequest request, Note note)
     {
         note.UpdateDetails(
             request.Name,
-            request.NoteContent,
-            documentId);
+            request.NoteContent);
     }
 }

@@ -16,13 +16,7 @@ public class Note
     public long DocumentId { get; private set; }
     public Document Document { get; private set; } = null!;
     
-
-    // Navigation Property for Flashcards
-    private readonly List<Flashcard> _flashcards = new();
-
-    public IReadOnlyCollection<Flashcard> Flashcards => _flashcards.AsReadOnly();
-    
-    // Additional Properties
+     // Additional Properties
     public bool IsDeleted { get; private set; }
     public DateTime CreatedAt {get; private set;} = DateTime.UtcNow;
     public DateTime UpdatedAt {get; private set;} = DateTime.UtcNow;
@@ -45,14 +39,13 @@ public class Note
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateDetails(string name, string noteContent, long documentId)
+    public void UpdateDetails(string name, string noteContent)
     {
         if (IsDeleted)
             throw new InvalidOperationException("Cannot modify a deleted note.");
 
         Name = NormalizeNoteName(name);
         NoteContent = NormalizeNoteContent(noteContent);
-        DocumentId = ValidateDocumentId(documentId);
 
         UpdatedAt = DateTime.UtcNow;
 
@@ -76,12 +69,18 @@ public class Note
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void MoveToDocument(long documentId)
+    internal void AssignToDocument(Document document)
     {
+        ArgumentNullException.ThrowIfNull(document);
+
         if (IsDeleted)
             throw new InvalidOperationException("Cannot modify a deleted note.");
 
-        DocumentId = ValidateDocumentId(documentId);
+        if (document.IsDeleted)
+            throw new InvalidOperationException("Cannot associate a note with a deleted document.");
+
+        DocumentId = ValidateDocumentId(document.DocumentId);
+        Document = document;
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -94,25 +93,6 @@ public class Note
 
         UpdatedAt = DateTime.UtcNow;
     }
-
-
-    public void AddFlashcard(Flashcard flashcard)
-    {
-        if (IsDeleted)
-            throw new InvalidOperationException("Cannot modify a deleted note.");
-
-        if (flashcard == null)
-            throw new ArgumentNullException(nameof(flashcard), "Flashcard cannot be null.");
-
-        bool hasDifferentNoteId = flashcard.NoteId.HasValue && flashcard.NoteId.Value != NoteId;
-
-        if (hasDifferentNoteId)
-            throw new InvalidOperationException("Flashcard is associated with a different note.");
-
-        _flashcards.Add(flashcard);
-        UpdatedAt = DateTime.UtcNow;
-    }
-
     public void MarkDeleted()
     {
         if (IsDeleted)
