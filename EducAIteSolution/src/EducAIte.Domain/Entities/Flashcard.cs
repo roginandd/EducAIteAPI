@@ -19,7 +19,8 @@ public class Flashcard
     public DateTime UpdatedAt { get; private set; } = DateTime.UtcNow;
 
     // Navigational Properties
-    public ICollection<StudentFlashcard> StudentFlashcards { get; private set; } = new HashSet<StudentFlashcard>();
+    private readonly HashSet<StudentFlashcard> _studentFlashcards = new();
+    public IReadOnlyCollection<StudentFlashcard> StudentFlashcards => _studentFlashcards.AsReadOnly();
 
     private Flashcard() { }
 
@@ -64,6 +65,18 @@ public class Flashcard
 
         IsDeleted = true;
         UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void MarkDeletedWithProgress(IEnumerable<StudentFlashcard> studentFlashcards)
+    {
+        ArgumentNullException.ThrowIfNull(studentFlashcards);
+
+        foreach (StudentFlashcard studentFlashcard in studentFlashcards)
+        {
+            studentFlashcard.MarkDeleted();
+        }
+
+        MarkDeleted();
     }
 
     private void EnsureNotDeleted()
