@@ -27,6 +27,20 @@ public class DocumentRepository : IDocumentRepository
                 cancellationToken);
     }
 
+    public async Task<Document?> GetTrackedByIdAsync(long id, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Documents
+            .Include(document => document.Folder)
+            .Include(document => document.FileMetadata)
+            .Include(document => document.Notes)
+            .Include(document => document.Flashcards)
+            .FirstOrDefaultAsync(document =>
+                document.DocumentId == id &&
+                !document.Folder.IsDeleted &&
+                !document.FileMetadata.IsDeleted,
+                cancellationToken);
+    }
+
     public async Task<bool> IsOwnedByStudentAsync(long documentId, long studentId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Documents
@@ -75,15 +89,14 @@ public class DocumentRepository : IDocumentRepository
 
     public async Task DeleteAsync(long id, CancellationToken cancellationToken = default)
     {
-        Document? existingDocument = await _dbContext.Documents
-            .FirstOrDefaultAsync(document => document.DocumentId == id, cancellationToken);
+        Document? existingDocument = await GetTrackedByIdAsync(id, cancellationToken);
 
         if (existingDocument is null)
         {
             return;
         }
 
-        existingDocument.MarkDeleted();
+        existingDocument.MarkDeletedWithChildren(existingDocument.Notes, existingDocument.Flashcards);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
