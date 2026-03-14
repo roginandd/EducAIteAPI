@@ -16,6 +16,8 @@ public interface IFlashcardRepository
 
     Task<IReadOnlyList<Flashcard>> GetAllByDocumentIdAndStudentIdAsync(long documentId, long studentId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Flashcard>> GetUntrackedByStudentIdAsync(long studentId, IReadOnlyCollection<long> excludeFlashcardIds, int take, CancellationToken cancellationToken = default);
+
     Task<Flashcard> AddAsync(Flashcard flashcard, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(Flashcard flashcard, CancellationToken cancellationToken = default);

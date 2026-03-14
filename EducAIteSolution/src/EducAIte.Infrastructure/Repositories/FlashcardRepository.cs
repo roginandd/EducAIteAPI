@@ -68,6 +68,31 @@ public sealed class FlashcardRepository : IFlashcardRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Flashcard>> GetUntrackedByStudentIdAsync(
+        long studentId,
+        IReadOnlyCollection<long> excludeFlashcardIds,
+        int take,
+        CancellationToken cancellationToken = default)
+    {
+        IQueryable<Flashcard> query = _context.Flashcards
+            .AsNoTracking()
+            .Where(f => f.Document.Folder.StudentId == studentId)
+            .Where(f => !f.Document.Folder.IsDeleted && !f.Document.FileMetadata.IsDeleted)
+            .Where(f => !_context.StudentFlashcards
+                .IgnoreQueryFilters()
+                .Any(sf => sf.StudentId == studentId && sf.FlashcardId == f.FlashcardId));
+
+        if (excludeFlashcardIds.Count > 0)
+        {
+            query = query.Where(f => !excludeFlashcardIds.Contains(f.FlashcardId));
+        }
+
+        return await query
+            .OrderBy(f => f.FlashcardId)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Flashcard> AddAsync(Flashcard flashcard, CancellationToken cancellationToken = default)
     {
         _context.Flashcards.Add(flashcard);
