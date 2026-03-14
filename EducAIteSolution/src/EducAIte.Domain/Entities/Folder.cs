@@ -27,7 +27,6 @@ public class Folder
     public ICollection<Folder> SubFolders { get; set; } = new HashSet<Folder>();
     public ICollection<Document> Documents { get; set; } = new HashSet<Document>();
 
-    public ICollection<StudentFlashcard> StudentFlashcards { get; set; } = new HashSet<StudentFlashcard>();
 
     //Additional Properties
     public bool IsDeleted { get; set; }

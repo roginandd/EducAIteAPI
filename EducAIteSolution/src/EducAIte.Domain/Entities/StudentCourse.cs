@@ -14,7 +14,6 @@ public class StudentCourse
     
 
 
-
     // Navigation Properties
     public Course Course { get; set; } = null!;
 
