@@ -16,6 +16,7 @@ public class FlashcardServiceTests
 {
     private readonly Mock<IFlashcardRepository> _flashcardRepositoryMock;
     private readonly Mock<IDocumentRepository> _documentRepositoryMock;
+    private readonly Mock<IStudentFlashcardRepository> _studentFlashcardRepositoryMock;
     private readonly Mock<IResourceOwnershipService> _resourceOwnershipServiceMock;
     private readonly Mock<ILogger<FlashcardService>> _loggerMock;
     private readonly ISqidService _sqidService;
@@ -30,6 +31,7 @@ public class FlashcardServiceTests
     {
         _flashcardRepositoryMock = new Mock<IFlashcardRepository>();
         _documentRepositoryMock = new Mock<IDocumentRepository>();
+        _studentFlashcardRepositoryMock = new Mock<IStudentFlashcardRepository>();
         _resourceOwnershipServiceMock = new Mock<IResourceOwnershipService>();
         _loggerMock = new Mock<ILogger<FlashcardService>>();
         _sqidService = new SqidService();
@@ -37,6 +39,7 @@ public class FlashcardServiceTests
         _flashcardService = new FlashcardService(
             _flashcardRepositoryMock.Object,
             _documentRepositoryMock.Object,
+            _studentFlashcardRepositoryMock.Object,
             _resourceOwnershipServiceMock.Object,
             _sqidService,
             _loggerMock.Object);
@@ -177,6 +180,28 @@ public class FlashcardServiceTests
 
         Assert.False(deleted);
         _flashcardRepositoryMock.Verify(repository => repository.UpdateAsync(It.IsAny<Flashcard>(), default), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteAsync_WithTrackedProgress_ArchivesProgressEntries()
+    {
+        long flashcardId = 52;
+        Flashcard flashcard = new("Question", "Answer", 9);
+        StudentFlashcard progress = new(7, flashcardId);
+
+        _flashcardRepositoryMock
+            .Setup(repository => repository.GetTrackedByIdAndStudentIdAsync(flashcardId, 7, default))
+            .ReturnsAsync(flashcard);
+        _studentFlashcardRepositoryMock
+            .Setup(repository => repository.GetTrackedByFlashcardIdAsync(flashcardId, default))
+            .ReturnsAsync([progress]);
+
+        bool deleted = await _flashcardService.DeleteAsync(_sqidService.Encode(flashcardId), 7);
+
+        Assert.True(deleted);
+        Assert.True(flashcard.IsDeleted);
+        Assert.True(progress.IsDeleted);
+        _flashcardRepositoryMock.Verify(repository => repository.UpdateAsync(flashcard, default), Times.Once);
     }
 
     private static Document CreateDocument(long documentId, long courseId, long studentId)
