@@ -23,6 +23,7 @@ namespace EducAIte.Application.Extensions;
         services.AddScoped<INoteOrderingService, NoteOrderingService>();
         services.AddScoped<IResourceOwnershipService, ResourceOwnershipService>();
         services.AddSingleton<ISqidService, SqidService>();
+        services.AddScoped<IStudentFlashcardService, StudentFlashcardService>();
         services.AddScoped<IStudentService, StudentService>();
 
         // Repositories
@@ -31,6 +32,7 @@ namespace EducAIte.Application.Extensions;
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IFlashcardRepository, FlashcardRepository>();
         services.AddScoped<INoteRepository, NoteRepository>();
+        services.AddScoped<IStudentFlashcardRepository, StudentFlashcardRepository>();
 
         return services;
       }
