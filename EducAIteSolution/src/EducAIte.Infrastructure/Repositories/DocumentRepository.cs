@@ -27,6 +27,29 @@ public class DocumentRepository : IDocumentRepository
                 cancellationToken);
     }
 
+    public async Task<Document?> GetTrackedByIdAsync(long id, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Documents
+            .Include(document => document.Folder)
+            .Include(document => document.FileMetadata)
+            .Include(document => document.Notes)
+            .ThenInclude(note => note.Flashcards)
+            .FirstOrDefaultAsync(document =>
+                document.DocumentId == id &&
+                !document.Folder.IsDeleted &&
+                !document.FileMetadata.IsDeleted,
+                cancellationToken);
+    }
+
+    public async Task<bool> IsOwnedByStudentAsync(long documentId, long studentId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Documents
+            .AsNoTracking()
+            .Where(document => document.DocumentId == documentId)
+            .Where(document => !document.Folder.IsDeleted && !document.FileMetadata.IsDeleted)
+            .AnyAsync(document => document.Folder.StudentId == studentId, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Document>> GetAllByStudentIdAsync(long studentId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.Documents
@@ -66,15 +89,14 @@ public class DocumentRepository : IDocumentRepository
 
     public async Task DeleteAsync(long id, CancellationToken cancellationToken = default)
     {
-        Document? existingDocument = await _dbContext.Documents
-            .FirstOrDefaultAsync(document => document.DocumentId == id, cancellationToken);
+        Document? existingDocument = await GetTrackedByIdAsync(id, cancellationToken);
 
         if (existingDocument is null)
         {
             return;
         }
 
-        existingDocument.MarkDeleted();
+        existingDocument.MarkDeletedWithChildren(existingDocument.Notes);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
     }

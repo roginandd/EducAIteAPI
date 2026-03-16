@@ -1,6 +1,7 @@
 using EducAIte.Application.DTOs.Request;
 using EducAIte.Application.Extensions;
 using EducAIte.Application.Services.Implementation;
+using EducAIte.Application.Services.Interface;
 using EducAIte.Domain.Entities;
 using EducAIte.Domain.Interfaces;
 using Mapster;
@@ -13,7 +14,9 @@ public class DocumentServiceTests
 {
     private readonly Mock<IDocumentRepository> _documentRepositoryMock;
     private readonly Mock<IStudentRepository> _studentRepositoryMock;
+    private readonly Mock<IResourceOwnershipService> _resourceOwnershipServiceMock;
     private readonly Mock<ILogger<DocumentService>> _loggerMock;
+    private readonly ISqidService _sqidService;
     private readonly DocumentService _documentService;
 
     static DocumentServiceTests()
@@ -25,10 +28,14 @@ public class DocumentServiceTests
     {
         _documentRepositoryMock = new Mock<IDocumentRepository>();
         _studentRepositoryMock = new Mock<IStudentRepository>();
+        _resourceOwnershipServiceMock = new Mock<IResourceOwnershipService>();
         _loggerMock = new Mock<ILogger<DocumentService>>();
+        _sqidService = new SqidService();
         _documentService = new DocumentService(
             _documentRepositoryMock.Object,
             _studentRepositoryMock.Object,
+            _resourceOwnershipServiceMock.Object,
+            _sqidService,
             _loggerMock.Object);
     }
 
@@ -52,6 +59,7 @@ public class DocumentServiceTests
             .Setup(repository => repository.AddAsync(It.IsAny<Document>(), default))
             .ReturnsAsync((Document document, CancellationToken _) =>
             {
+                SetPrivateProperty(document, nameof(Document.DocumentId), 101L);
                 document.Folder = new Folder
                 {
                     FolderId = document.FolderId,
@@ -74,12 +82,11 @@ public class DocumentServiceTests
                 return document;
             });
 
-        var result = await _documentService.CreateDocumentAsync(request);
+        var result = await _documentService.CreateDocumentAsync(request, 7);
 
         Assert.Equal("Midterm Notes", result.DocumentName);
-        Assert.Equal(12, result.FolderId);
-        Assert.Equal(33, result.FileMetadataId);
-        Assert.Equal(7, result.StudentId);
+        Assert.Equal(_sqidService.Encode(12), result.FolderSqid);
+        Assert.Equal(_sqidService.Encode(33), result.FileMetadataSqid);
     }
 
     [Fact]
@@ -99,7 +106,7 @@ public class DocumentServiceTests
             .Setup(repository => repository.GetFileMetadataStudentIdAsync(request.FileMetadataId, default))
             .ReturnsAsync(2);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _documentService.CreateDocumentAsync(request));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _documentService.CreateDocumentAsync(request, 1));
 
         _documentRepositoryMock.Verify(repository => repository.AddAsync(It.IsAny<Document>(), default), Times.Never);
     }
@@ -153,9 +160,18 @@ public class DocumentServiceTests
                 return document;
             });
 
-        var result = await _documentService.UpdateDocumentAsync(100, request);
+        _resourceOwnershipServiceMock
+            .Setup(service => service.EnsureDocumentOwnedByStudentAsync(100, 3, default))
+            .Returns(Task.CompletedTask);
+
+        var result = await _documentService.UpdateDocumentAsync(_sqidService.Encode(100), request, 3);
 
         Assert.True(result);
         _documentRepositoryMock.Verify(repository => repository.UpdateAsync(It.IsAny<Document>(), default), Times.Never);
+    }
+
+    private static void SetPrivateProperty<T>(object target, string propertyName, T value)
+    {
+        typeof(Document).GetProperty(propertyName)!.SetValue(target, value);
     }
 }

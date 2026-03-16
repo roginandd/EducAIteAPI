@@ -39,7 +39,7 @@ public class Student
 
     public ICollection<FileMetadata> UploadedFiles { get; set; } = new HashSet<FileMetadata>();
 
-    public ICollection<StudentFlashcard> Flashcards { get; set; } = new HashSet<StudentFlashcard>();
+    public ICollection<StudentFlashcard> StudentFlashcards { get; set; } = new HashSet<StudentFlashcard>();
 
     public ICollection<StudentCourse> EnrolledCourses { get; set; } = new HashSet<StudentCourse>();
 

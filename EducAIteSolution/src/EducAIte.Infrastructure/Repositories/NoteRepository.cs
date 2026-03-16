@@ -15,6 +15,15 @@ public sealed class NoteRepository : INoteRepository
         _context = context;
     }
 
+    public async Task<bool> IsOwnedByStudentAsync(long noteId, long studentId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Notes
+            .AsNoTracking()
+            .Where(note => note.NoteId == noteId)
+            .Where(note => !note.Document.Folder.IsDeleted)
+            .AnyAsync(note => note.Document.Folder.StudentId == studentId, cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Note>> GetAllByDocumentIdAndStudentIdAsync(
         long documentId,
         long studentId,

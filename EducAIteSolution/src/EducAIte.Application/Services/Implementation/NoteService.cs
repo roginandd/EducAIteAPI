@@ -15,6 +15,7 @@ public class NoteService : INoteService
     private readonly INoteRepository _noteRepository;
     private readonly IDocumentRepository _documentRepository;
     private readonly INoteOrderingService _noteOrderingService;
+    private readonly IResourceOwnershipService _resourceOwnershipService;
     private readonly ISqidService _sqidService;
     private readonly ILogger<NoteService> _logger;
 
@@ -22,26 +23,34 @@ public class NoteService : INoteService
         INoteRepository noteRepository,
         IDocumentRepository documentRepository,
         INoteOrderingService noteOrderingService,
+        IResourceOwnershipService resourceOwnershipService,
         ISqidService sqidService,
         ILogger<NoteService> logger)
     {
         _noteRepository = noteRepository;
         _documentRepository = documentRepository;
         _noteOrderingService = noteOrderingService;
+        _resourceOwnershipService = resourceOwnershipService;
         _sqidService = sqidService;
         _logger = logger;
     }
 
-    public async Task<NoteResponse?> GetNoteBySqidAsync(string sqid, CancellationToken cancellationToken = default)
+    public async Task<NoteResponse?> GetNoteBySqidAsync(
+        string sqid,
+        long studentId,
+        CancellationToken cancellationToken = default)
     {
+        EnsureStudentIdIsValid(studentId);
+
         if (!TryDecodeSqid(sqid, out long noteId))
         {
             return null;
         }
 
+        await _resourceOwnershipService.EnsureNoteOwnedByStudentAsync(noteId, studentId, cancellationToken);
         Note? note = await _noteRepository.GetByIdAsync(noteId, cancellationToken);
 
-        return note is null ? null : note.ToResponse();
+        return note is null ? null : note.ToResponse(_sqidService);
     }
 
     public async Task<IReadOnlyList<NoteResponse>> GetNotesByDocumentAsync(
@@ -49,21 +58,19 @@ public class NoteService : INoteService
         long studentId,
         CancellationToken cancellationToken = default)
     {
-        if (studentId <= 0)
-        {
-            throw new ArgumentException("StudentId must be greater than zero.");
-        }
+        EnsureStudentIdIsValid(studentId);
 
         if (!_sqidService.TryDecode(documentSqid, out long documentId))
         {
             return [];
         }
 
+        await _resourceOwnershipService.EnsureDocumentOwnedByStudentAsync(documentId, studentId, cancellationToken);
         IReadOnlyList<Note> notes = await _noteRepository.GetAllByDocumentIdAndStudentIdAsync(
             documentId,
             studentId,
             cancellationToken);
-        return notes.Select(n => n.ToResponse()).ToList();
+        return notes.Select(n => n.ToResponse(_sqidService)).ToList();
     }
 
     public async Task<IReadOnlyList<NoteResponse>> GetNotesByStudentAsync(long studentId, CancellationToken cancellationToken = default)
@@ -74,16 +81,22 @@ public class NoteService : INoteService
         }
 
         IReadOnlyList<Note> notes = await _noteRepository.GetAllByStudentIdAsync(studentId, cancellationToken);
-        return notes.Select(n => n.ToResponse()).ToList();
+        return notes.Select(n => n.ToResponse(_sqidService)).ToList();
     }
 
-    public async Task<NoteResponse> CreateNoteAsync(CreateNoteRequest request, CancellationToken cancellationToken = default)
+    public async Task<NoteResponse> CreateNoteAsync(
+        CreateNoteRequest request,
+        long studentId,
+        CancellationToken cancellationToken = default)
     {
+        EnsureStudentIdIsValid(studentId);
+
         if (!_sqidService.TryDecode(request.DocumentSqid, out long documentId))
         {
             throw new ArgumentException("DocumentSqid is invalid.");
         }
 
+        await _resourceOwnershipService.EnsureDocumentOwnedByStudentAsync(documentId, studentId, cancellationToken);
         await EnsureDocumentExistsAsync(documentId, cancellationToken);
         for (int attempt = 0; attempt <= MaxUniqueConflictRetries; attempt++)
         {
@@ -97,24 +110,31 @@ public class NoteService : INoteService
             {
                 Note createdNote = await _noteRepository.AddAsync(note, cancellationToken);
                 _logger.LogInformation("Created note {NoteId}", createdNote.NoteId);
-                return createdNote.ToResponse();
+                return createdNote.ToResponse(_sqidService);
             }
             catch (Exception ex) when (attempt < MaxUniqueConflictRetries && IsUniqueSequenceConflict(ex))
             {
-                await _noteOrderingService.RebalanceAsync(request.DocumentSqid, cancellationToken);
+                await _noteOrderingService.RebalanceAsync(studentId, request.DocumentSqid, cancellationToken);
             }
         }
 
         throw new InvalidOperationException("Unable to create note after retrying due to sequence conflicts.");
     }
 
-    public async Task<bool> UpdateNoteAsync(string sqid, UpdateNoteRequest request, CancellationToken cancellationToken = default)
+    public async Task<bool> UpdateNoteAsync(
+        string sqid,
+        UpdateNoteRequest request,
+        long studentId,
+        CancellationToken cancellationToken = default)
     {
+        EnsureStudentIdIsValid(studentId);
+
         if (!TryDecodeSqid(sqid, out long noteId))
         {
             return false;
         }
 
+        await _resourceOwnershipService.EnsureNoteOwnedByStudentAsync(noteId, studentId, cancellationToken);
         Note? existingNote = await _noteRepository.GetTrackedByIdAsync(noteId, cancellationToken);
         if (existingNote is null)
         {
@@ -126,22 +146,40 @@ public class NoteService : INoteService
             throw new ArgumentException("DocumentSqid is invalid.");
         }
 
+        await _resourceOwnershipService.EnsureDocumentOwnedByStudentAsync(documentId, studentId, cancellationToken);
         if (IsUnchanged(existingNote, request, documentId))
         {
             return true;
         }
 
         await EnsureDocumentExistsAsync(documentId, cancellationToken);
+        existingNote.UpdateDetails(request.Name, request.NoteContent);
 
-        existingNote.UpdateDetails(request.Name, request.NoteContent, documentId);
+        if (existingNote.DocumentId != documentId)
+        {
+            Document? targetDocument = await _documentRepository.GetTrackedByIdAsync(documentId, cancellationToken);
+            if (targetDocument is null)
+            {
+                throw new KeyNotFoundException($"Document with ID {documentId} not found.");
+            }
+
+            targetDocument.ReassignNote(existingNote);
+        }
+
         await _noteRepository.UpdateAsync(existingNote, cancellationToken);
 
         _logger.LogInformation("Updated note {NoteSqid}", sqid);
         return true;
     }
 
-    public async Task<bool> PatchNoteAsync(string sqid, PatchNoteRequest request, CancellationToken cancellationToken = default)
+    public async Task<bool> PatchNoteAsync(
+        string sqid,
+        PatchNoteRequest request,
+        long studentId,
+        CancellationToken cancellationToken = default)
     {
+        EnsureStudentIdIsValid(studentId);
+
         if (IsPatchEmpty(request))
         {
             throw new ArgumentException("At least one field must be provided.");
@@ -152,6 +190,7 @@ public class NoteService : INoteService
             return false;
         }
 
+        await _resourceOwnershipService.EnsureNoteOwnedByStudentAsync(noteId, studentId, cancellationToken);
         Note? existingNote = await _noteRepository.GetTrackedByIdAsync(noteId, cancellationToken);
         if (existingNote is null)
         {
@@ -175,8 +214,15 @@ public class NoteService : INoteService
                 throw new ArgumentException("DocumentSqid is invalid.");
             }
 
+            await _resourceOwnershipService.EnsureDocumentOwnedByStudentAsync(patchedDocumentId, studentId, cancellationToken);
             await EnsureDocumentExistsAsync(patchedDocumentId, cancellationToken);
-            existingNote.MoveToDocument(patchedDocumentId);
+            Document? targetDocument = await _documentRepository.GetTrackedByIdAsync(patchedDocumentId, cancellationToken);
+            if (targetDocument is null)
+            {
+                throw new KeyNotFoundException($"Document with ID {patchedDocumentId} not found.");
+            }
+
+            targetDocument.ReassignNote(existingNote);
         }
 
         await _noteRepository.UpdateAsync(existingNote, cancellationToken);
@@ -185,13 +231,16 @@ public class NoteService : INoteService
         return true;
     }
 
-    public async Task<bool> DeleteNoteAsync(string sqid, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteNoteAsync(string sqid, long studentId, CancellationToken cancellationToken = default)
     {
+        EnsureStudentIdIsValid(studentId);
+
         if (!TryDecodeSqid(sqid, out long noteId))
         {
             return false;
         }
 
+        await _resourceOwnershipService.EnsureNoteOwnedByStudentAsync(noteId, studentId, cancellationToken);
         bool isDeleted = await _noteRepository.SoftDeleteByIdAsync(noteId, cancellationToken);
         if (isDeleted)
         {
@@ -237,6 +286,25 @@ public class NoteService : INoteService
 
     private static bool IsUniqueSequenceConflict(Exception exception)
     {
-        return exception.Message.Contains("IX_Notes_DocumentId_SequenceNumber", StringComparison.OrdinalIgnoreCase);
+        Exception? current = exception;
+        while (current is not null)
+        {
+            if (current.Message.Contains("IX_Notes_DocumentId_SequenceNumber", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            current = current.InnerException;
+        }
+
+        return false;
+    }
+
+    private static void EnsureStudentIdIsValid(long studentId)
+    {
+        if (studentId <= 0)
+        {
+            throw new ArgumentException("StudentId must be greater than zero.");
+        }
     }
 }

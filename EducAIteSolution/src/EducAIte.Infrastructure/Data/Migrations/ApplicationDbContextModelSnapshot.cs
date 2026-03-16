@@ -222,16 +222,8 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
-                    b.Property<long>("CourseId")
-                        .HasColumnType("bigint");
-
                     b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("timezone('utc', now())");
-
-                    b.Property<long?>("DocumentId")
-                        .HasColumnType("bigint");
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
@@ -241,28 +233,17 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                     b.Property<long>("NoteId")
                         .HasColumnType("bigint");
 
-                    b.Property<long?>("NoteId1")
-                        .HasColumnType("bigint");
-
                     b.Property<string>("Question")
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
                     b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("timezone('utc', now())");
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("FlashcardId");
 
-                    b.HasIndex("CourseId");
-
-                    b.HasIndex("DocumentId");
-
                     b.HasIndex("NoteId");
-
-                    b.HasIndex("NoteId1");
 
                     b.ToTable("Flashcards", (string)null);
                 });
@@ -585,6 +566,14 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("StudentFlashcardId"));
 
+                    b.Property<int>("ConsecutiveCorrectCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("ConsecutiveWrongCount")
+                        .HasColumnType("integer");
+
                     b.Property<int>("CorrectCount")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
@@ -598,13 +587,36 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                     b.Property<long>("FlashcardId")
                         .HasColumnType("bigint");
 
-                    b.Property<long?>("FolderId")
-                        .HasColumnType("bigint");
-
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
+
+                    b.Property<int>("LapseCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<int?>("LastReviewOutcome")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("LastReviewedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("NextReviewAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<int>("ReviewCount")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<int>("State")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.Property<long>("StudentId")
                         .HasColumnType("bigint");
@@ -623,10 +635,12 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
 
                     b.HasIndex("FlashcardId");
 
-                    b.HasIndex("FolderId");
-
                     b.HasIndex("StudentId", "FlashcardId")
                         .IsUnique();
+
+                    b.HasIndex("StudentId", "NextReviewAt");
+
+                    b.HasIndex("StudentId", "State", "NextReviewAt");
 
                     b.ToTable("StudentFlashcards", (string)null);
                 });
@@ -719,30 +733,11 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("EducAIte.Domain.Entities.Flashcard", b =>
                 {
-                    b.HasOne("EducAIte.Domain.Entities.Course", "Course")
-                        .WithMany()
-                        .HasForeignKey("CourseId")
+                    b.HasOne("EducAIte.Domain.Entities.Note", "Note")
+                        .WithMany("Flashcards")
+                        .HasForeignKey("NoteId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("EducAIte.Domain.Entities.Document", "Document")
-                        .WithMany()
-                        .HasForeignKey("DocumentId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("EducAIte.Domain.Entities.Note", "Note")
-                        .WithMany()
-                        .HasForeignKey("NoteId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .IsRequired();
-
-                    b.HasOne("EducAIte.Domain.Entities.Note", null)
-                        .WithMany("Flashcards")
-                        .HasForeignKey("NoteId1");
-
-                    b.Navigation("Course");
-
-                    b.Navigation("Document");
 
                     b.Navigation("Note");
                 });
@@ -855,17 +850,13 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
             modelBuilder.Entity("EducAIte.Domain.Entities.StudentFlashcard", b =>
                 {
                     b.HasOne("EducAIte.Domain.Entities.Flashcard", "Flashcard")
-                        .WithMany()
+                        .WithMany("StudentFlashcards")
                         .HasForeignKey("FlashcardId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("EducAIte.Domain.Entities.Folder", null)
-                        .WithMany("StudentFlashcards")
-                        .HasForeignKey("FolderId");
-
                     b.HasOne("EducAIte.Domain.Entities.Student", "Student")
-                        .WithMany("Flashcards")
+                        .WithMany("StudentFlashcards")
                         .HasForeignKey("StudentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -923,11 +914,14 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                     b.Navigation("Notes");
                 });
 
+            modelBuilder.Entity("EducAIte.Domain.Entities.Flashcard", b =>
+                {
+                    b.Navigation("StudentFlashcards");
+                });
+
             modelBuilder.Entity("EducAIte.Domain.Entities.Folder", b =>
                 {
                     b.Navigation("Documents");
-
-                    b.Navigation("StudentFlashcards");
 
                     b.Navigation("SubFolders");
                 });
@@ -943,9 +937,9 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
 
                     b.Navigation("EnrolledCourses");
 
-                    b.Navigation("Flashcards");
-
                     b.Navigation("Folders");
+
+                    b.Navigation("StudentFlashcards");
 
                     b.Navigation("StudyLoads");
 

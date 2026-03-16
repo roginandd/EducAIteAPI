@@ -24,32 +24,23 @@ public class FlashcardConfiguration : IEntityTypeConfiguration<Flashcard>
             .HasMaxLength(2000);
 
         builder.Property(f => f.CreatedAt)
-            .IsRequired()
-            .HasDefaultValueSql("timezone('utc', now())");
+            .IsRequired();
 
         builder.Property(f => f.UpdatedAt)
-            .IsRequired()
-            .HasDefaultValueSql("timezone('utc', now())");
+            .IsRequired();
 
         builder.Property(f => f.IsDeleted)
             .IsRequired()
             .HasDefaultValue(false);
 
-        // Foreign keys
-        builder.HasOne(f => f.Course)
-            .WithMany()
-            .HasForeignKey(f => f.CourseId)
-            .OnDelete(DeleteBehavior.Restrict);
+        builder.HasQueryFilter(f => !f.IsDeleted);
 
         builder.HasOne(f => f.Note)
-            .WithMany()
+            .WithMany(n => n.Flashcards)
             .HasForeignKey(f => f.NoteId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.Restrict);
 
-        builder.HasOne(f => f.Document)
-            .WithMany()
-            .HasForeignKey(f => f.DocumentId)
-            .OnDelete(DeleteBehavior.SetNull);
-
+        builder.Navigation(f => f.StudentFlashcards)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

@@ -48,5 +48,8 @@ public class NoteConfiguration : IEntityTypeConfiguration<Note>
             .HasDatabaseName("IX_Notes_DocumentId_SequenceNumber");
 
         builder.HasQueryFilter(note => !note.IsDeleted);
+
+        builder.Navigation(n => n.Flashcards)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

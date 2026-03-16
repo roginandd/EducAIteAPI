@@ -12,12 +12,14 @@ namespace EducAIteSolution.Tests.Integration.Features.Documents;
 public class DocumentIntegrationTests : IntegrationTestBase
 {
     private readonly IDocumentService _documentService;
+    private readonly ISqidService _sqidService;
     private readonly ITestOutputHelper _outputHelper;
 
     public DocumentIntegrationTests(ITestOutputHelper outputHelper) : base(outputHelper)
     {
         _outputHelper = outputHelper;
         _documentService = ServiceProvider.GetRequiredService<IDocumentService>();
+        _sqidService = ServiceProvider.GetRequiredService<ISqidService>();
     }
 
     [Fact]
@@ -32,16 +34,17 @@ public class DocumentIntegrationTests : IntegrationTestBase
             DocumentName = "Syllabus",
             FolderId = folder.FolderId,
             FileMetadataId = file.FileMetaDataId
-        });
+        }, student.StudentId);
 
         var persistedDocument = await ApplicationDbContext.Documents
             .Include(document => document.Folder)
-            .FirstOrDefaultAsync(document => document.DocumentId == result.DocumentId);
+            .FirstOrDefaultAsync(document => document.DocumentName == result.DocumentName);
 
         Assert.NotNull(persistedDocument);
         Assert.Equal("Syllabus", persistedDocument.DocumentName);
         Assert.Equal(student.StudentId, persistedDocument.Folder.StudentId);
-        Assert.Equal(student.StudentId, result.StudentId);
+        Assert.Equal(_sqidService.Encode(folder.FolderId), result.FolderSqid);
+        Assert.Equal(_sqidService.Encode(file.FileMetaDataId), result.FileMetadataSqid);
 
         await DumpDatabaseStateAsync(nameof(CreateDocumentAsync_WithValidRequest_PersistsDocument));
     }
@@ -75,12 +78,12 @@ public class DocumentIntegrationTests : IntegrationTestBase
         var replacementFile = await SeedFileMetadataAsync(student.StudentId, "reviewer-v2.pdf", "files/reviewer-v2.pdf");
         var document = await SeedDocumentAsync(folder.FolderId, originalFile.FileMetaDataId, "Reviewer");
 
-        var updated = await _documentService.UpdateDocumentAsync(document.DocumentId, new UpdateDocumentRequest
+        var updated = await _documentService.UpdateDocumentAsync(_sqidService.Encode(document.DocumentId), new UpdateDocumentRequest
         {
             DocumentName = "Reviewer Final",
             FolderId = replacementFolder.FolderId,
             FileMetadataId = replacementFile.FileMetaDataId
-        });
+        }, student.StudentId);
 
         var persistedDocument = await ApplicationDbContext.Documents
             .FirstAsync(savedDocument => savedDocument.DocumentId == document.DocumentId);
@@ -101,15 +104,16 @@ public class DocumentIntegrationTests : IntegrationTestBase
         var file = await SeedFileMetadataAsync(student.StudentId, "archive.pdf", "files/archive.pdf");
         var document = await SeedDocumentAsync(folder.FolderId, file.FileMetaDataId, "Archive Copy");
 
-        var deleted = await _documentService.DeleteDocumentAsync(document.DocumentId);
+        var documentSqid = _sqidService.Encode(document.DocumentId);
+        var deleted = await _documentService.DeleteDocumentAsync(documentSqid, student.StudentId);
         var persistedDocument = await ApplicationDbContext.Documents
             .IgnoreQueryFilters()
             .FirstAsync(savedDocument => savedDocument.DocumentId == document.DocumentId);
-        var fetchedDocument = await _documentService.GetDocumentByIdAsync(document.DocumentId);
 
         Assert.True(deleted);
         Assert.True(persistedDocument.IsDeleted);
-        Assert.Null(fetchedDocument);
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            _documentService.GetDocumentByIdAsync(documentSqid, student.StudentId));
 
         await DumpDatabaseStateAsync(nameof(DeleteDocumentAsync_SoftDeletesDocument));
     }

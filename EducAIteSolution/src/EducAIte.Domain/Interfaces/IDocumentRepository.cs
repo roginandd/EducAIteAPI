@@ -6,6 +6,10 @@ public interface IDocumentRepository
 {
     Task<Document?> GetByIdAsync(long id, CancellationToken cancellationToken = default);
 
+    Task<Document?> GetTrackedByIdAsync(long id, CancellationToken cancellationToken = default);
+
+    Task<bool> IsOwnedByStudentAsync(long documentId, long studentId, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<Document>> GetAllByStudentIdAsync(long studentId, CancellationToken cancellationToken = default);
 
     Task<Document> AddAsync(Document document, CancellationToken cancellationToken = default);

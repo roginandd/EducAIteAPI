@@ -42,8 +42,7 @@ public class Document
 
     public void UpdateDetails(string documentName, long folderId, long fileMetadataId)
     {
-        if (IsDeleted)
-            throw new InvalidOperationException("Cannot modify a deleted document.");
+        EnsureNotDeleted();
 
         DocumentName = NormalizeDocumentName(documentName);
         FolderId = ValidateFolderId(folderId);
@@ -61,11 +60,25 @@ public class Document
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void MarkDeletedWithChildren(IEnumerable<Note> notes)
+    {
+        ArgumentNullException.ThrowIfNull(notes);
+
+        foreach (Note note in notes)
+        {
+            note.MarkDeletedWithChildren();
+        }
+
+        MarkDeleted();
+    }
+
     public void AddNote(Note note)
     {
-        if (note == null)
-            throw new ArgumentNullException(nameof(note));
+        ArgumentNullException.ThrowIfNull(note);
+        EnsureNotDeleted();
+        EnsureNoteBelongsToDocument(note);
 
+        note.AssignToDocument(this);
         _notes.Add(note);
     }
 
@@ -75,6 +88,38 @@ public class Document
             return;
 
         _notes.Remove(note);
+    }
+
+    public void ReassignNote(Note note)
+    {
+        ArgumentNullException.ThrowIfNull(note);
+        EnsureNotDeleted();
+
+        if (note.IsDeleted)
+            throw new InvalidOperationException("Cannot associate a deleted note with a document.");
+
+        if (note.Document is not null && !ReferenceEquals(note.Document, this))
+        {
+            note.Document.RemoveNote(note);
+        }
+
+        note.AssignToDocument(this);
+        _notes.Add(note);
+    }
+
+    private void EnsureNotDeleted()
+    {
+        if (IsDeleted)
+            throw new InvalidOperationException("Cannot modify a deleted document.");
+    }
+
+    private void EnsureNoteBelongsToDocument(Note note)
+    {
+        if (note.IsDeleted)
+            throw new InvalidOperationException("Cannot associate a deleted note with a document.");
+
+        if (note.DocumentId != DocumentId)
+            throw new InvalidOperationException("Note is associated with a different document.");
     }
 
     private static string NormalizeDocumentName(string documentName)
