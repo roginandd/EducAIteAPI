@@ -7,6 +7,6 @@ namespace EducAIte.Application.Services.Interface;
 public interface IStudentService
 {
     Task<StudentResponse> RegisterStudentAsync(StudentRegistrationRequest request);
-    Task<StudentResponse> GetStudentByIdAsync(long studentId);
-    
+    Task<StudentResponse> GetStudentBySqidAsync(string studentSqid);
+    Task<StudentResponse> GetCurrentStudentAsync(long studentId);
 }
