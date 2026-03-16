@@ -39,8 +39,7 @@ public class StudentFlashcardConfiguration : IEntityTypeConfiguration<StudentFla
         builder.Property(sf => sf.LastReviewedAt);
 
         builder.Property(sf => sf.State)
-            .HasConversion<int>()
-            .HasDefaultValue(FlashcardReviewState.New);
+            .HasConversion<int>();
 
         builder.Property(sf => sf.LastReviewOutcome)
             .HasConversion<int?>();

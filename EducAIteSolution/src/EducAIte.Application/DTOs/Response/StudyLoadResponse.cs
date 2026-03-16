@@ -7,9 +7,19 @@ namespace EducAIte.Application.DTOs.Response;
 public record StudyLoadResponse
 {
     /// <summary>
+    /// The sqid representation of the study load identifier.
+    /// </summary>
+    public string Sqid { get; init; } = string.Empty;
+
+    /// <summary>
     /// The unique surrogate primary key of the study load.
     /// </summary>
     public long StudyLoadId { get; init; }
+
+    /// <summary>
+    /// The sqid representation of the student identifier.
+    /// </summary>
+    public string StudentSqid { get; init; } = string.Empty;
 
     /// <summary>
     /// The student ID associated with this study load.
@@ -17,9 +27,24 @@ public record StudyLoadResponse
     public long StudentId { get; init; }
 
     /// <summary>
+    /// The sqid representation of the study load file metadata.
+    /// </summary>
+    public string FileMetadataSqid { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Metadata for the uploaded study load document.
+    /// </summary>
+    public FileMetadataResponse? FileMetadata { get; init; }
+
+    /// <summary>
     /// The school year for this study load (e.g., 2023-2024).
     /// </summary>
     public string SchoolYear { get; init; } = string.Empty;
+
+    /// <summary>
+    /// The semester label for this study load.
+    /// </summary>
+    public string Semester { get; init; } = string.Empty;
 
     /// <summary>
     /// Collection of courses enrolled in this study load.
@@ -48,9 +73,14 @@ public record StudyLoadResponse
 /// </summary>
 public record StudyLoadDto
 {
+    public string Sqid { get; init; } = string.Empty;
     public long StudyLoadId { get; init; }
+    public string StudentSqid { get; init; } = string.Empty;
     public long StudentId { get; init; }
+    public string FileMetadataSqid { get; init; } = string.Empty;
+    public FileMetadataResponse? FileMetadata { get; init; }
     public string SchoolYear { get; init; } = string.Empty;
+    public string Semester { get; init; } = string.Empty;
     public IEnumerable<CourseResponse> Courses { get; init; } = new List<CourseResponse>();
     public int TotalUnits { get; init; }
     public DateTime CreatedAt { get; init; }

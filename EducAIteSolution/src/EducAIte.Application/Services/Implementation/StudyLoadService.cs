@@ -16,12 +16,14 @@ public class StudyLoadService(
     IStudyLoadRepository studyLoadRepository,
     IStudentRepository studentRepository,
     ILogger<StudyLoadService> logger,
-    IAWSService awsService) : IStudyLoadService
+    IAWSService awsService,
+    ISqidService sqidService) : IStudyLoadService
 {
     private readonly IStudyLoadRepository _studyLoadRepository = studyLoadRepository;
     private readonly IStudentRepository _studentRepository = studentRepository;
     private readonly ILogger<StudyLoadService> _logger = logger;
-    private readonly IAWSService _awsService;
+    private readonly IAWSService _awsService = awsService;
+    private readonly ISqidService _sqidService = sqidService;
 
     /// <summary>
     /// Retrieves a study load by student ID.
@@ -43,7 +45,7 @@ public class StudyLoadService(
         }
 
         _logger.LogInformation("Retrieved study load for student ID {StudentId}.", studentId);
-        return studyLoad.ToDto();
+        return studyLoad.ToDto(_sqidService);
     }
 
     /// <summary>
@@ -52,27 +54,32 @@ public class StudyLoadService(
     /// </summary>
     public async Task<StudyLoadDto> AddStudyLoadAsync(StudyLoadCreateRequest studyLoadCreateDto, CancellationToken cancellationToken = default)
     {
+        if (!_sqidService.TryDecode(studyLoadCreateDto.StudentSqid, out long studentId))
+        {
+            throw new ArgumentException("StudentSqid is invalid.", nameof(studyLoadCreateDto.StudentSqid));
+        }
+
         // Validate student exists
-        var student = await _studentRepository.GetByStudentIdAsync(studyLoadCreateDto.StudentId);
+        var student = await _studentRepository.GetByStudentIdAsync(studentId);
         if (student is null)
         {
-            _logger.LogWarning("Attempted to create study load for non-existent student ID {StudentId}.", studyLoadCreateDto.StudentId);
-            throw new KeyNotFoundException($"Student with ID {studyLoadCreateDto.StudentId} not found.");
+            _logger.LogWarning("Attempted to create study load for non-existent student ID {StudentId}.", studentId);
+            throw new KeyNotFoundException($"Student with ID {studentId} not found.");
         }
 
         // Check if student already has a study load
-        var existingStudyLoad = await _studyLoadRepository.GetByStudentIdAsync(studyLoadCreateDto.StudentId, cancellationToken);
+        var existingStudyLoad = await _studyLoadRepository.GetByStudentIdAsync(studentId, cancellationToken);
         if (existingStudyLoad is not null)
         {
-            throw new InvalidOperationException($"Student {studyLoadCreateDto.StudentId} already has a study load.");
+            throw new InvalidOperationException($"Student {studentId} already has a study load.");
         }
 
-        string studyLoadPath = await _awsService.UploadFileAsync(studyLoadCreateDto.StudyLoadDocument!, $"studyloads/{studyLoadCreateDto.StudentId}/{Guid.NewGuid()}.pdf", cancellationToken);
+        await _awsService.UploadStudyLoad(studyLoadCreateDto, cancellationToken);
 
-        var newStudyLoad = studyLoadCreateDto.ToEntity();
+        var newStudyLoad = studyLoadCreateDto.ToEntity(studentId);
         var createdStudyLoad = await _studyLoadRepository.AddStudyLoadAsync(newStudyLoad, cancellationToken);
         _logger.LogInformation("Study load added for student ID {StudentId}.", createdStudyLoad.StudentId);
-        return createdStudyLoad.ToDto();
+        return createdStudyLoad.ToDto(_sqidService);
     }
 
     /// <summary>
@@ -90,7 +97,7 @@ public class StudyLoadService(
         var updatedStudyLoad = studyLoadUpdateDto.ToEntity(existingStudyLoad);
         var result = await _studyLoadRepository.UpdateStudyLoadAsync(updatedStudyLoad, cancellationToken);
         _logger.LogInformation("Study load with ID {StudyLoadId} updated.", result.StudyLoadId);
-        return result.ToDto();
+        return result.ToDto(_sqidService);
     }
 
     /// <summary>

@@ -9,9 +9,19 @@ public class StudyLoadRepository(ApplicationDbContext dbContext) : IStudyLoadRep
 {
     private readonly ApplicationDbContext _dbContext = dbContext;
 
+    public async Task<StudyLoad?> GetByIdAsync(long studyLoadId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.StudyLoads
+            .Include(studyLoad => studyLoad.Courses)
+            .Include(studyLoad => studyLoad.FileMetadata)
+            .FirstOrDefaultAsync(studyLoad => studyLoad.StudyLoadId == studyLoadId, cancellationToken);
+    }
+
     public async Task<StudyLoad?> GetByStudentIdAsync(long studentId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.StudyLoads
+            .Include(studyLoad => studyLoad.Courses)
+            .Include(studyLoad => studyLoad.FileMetadata)
             .FirstOrDefaultAsync(s => s.StudentId == studentId, cancellationToken);
     }
 
@@ -32,7 +42,9 @@ public class StudyLoadRepository(ApplicationDbContext dbContext) : IStudyLoadRep
     public async Task<StudyLoad?> GetByIdAndStudentIdAsync(long studyLoadId, long studentId, CancellationToken cancellationToken = default)
     {
         return await _dbContext.StudyLoads
-            .FirstOrDefaultAsync(s => s.StudentId == studyLoadId && s.StudentId == studentId, cancellationToken);
+            .Include(studyLoad => studyLoad.Courses)
+            .Include(studyLoad => studyLoad.FileMetadata)
+            .FirstOrDefaultAsync(studyLoad => studyLoad.StudyLoadId == studyLoadId && studyLoad.StudentId == studentId, cancellationToken);
     }
 
     public async Task<bool> DeleteStudyLoadAsync(long id, CancellationToken cancellationToken = default)
