@@ -37,7 +37,6 @@ namespace EducAIte.Application.Extensions;
         services.AddScoped<INoteRepository, NoteRepository>();
         services.AddScoped<IStudentCourseRepository, StudentCourseRepository>();
         services.AddScoped<IStudentFlashcardRepository, StudentFlashcardRepository>();
-        services.AddScoped<IStudyLoadRepository, StudyLoadRepository>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         return services;
