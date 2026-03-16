@@ -1,6 +1,7 @@
 using EducAIte.Application.DTOs.Request;
 using EducAIte.Application.DTOs.Response;
 using EducAIte.Application.Extensions.MappingExtensions;
+using EducAIte.Application.Interfaces;
 using EducAIte.Application.Services.Interface;
 using EducAIte.Domain.Entities;
 using EducAIte.Domain.Interfaces;
@@ -17,6 +18,7 @@ public class NoteService : INoteService
     private readonly INoteOrderingService _noteOrderingService;
     private readonly IResourceOwnershipService _resourceOwnershipService;
     private readonly ISqidService _sqidService;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<NoteService> _logger;
 
     public NoteService(
@@ -25,6 +27,7 @@ public class NoteService : INoteService
         INoteOrderingService noteOrderingService,
         IResourceOwnershipService resourceOwnershipService,
         ISqidService sqidService,
+        IUnitOfWork unitOfWork,
         ILogger<NoteService> logger)
     {
         _noteRepository = noteRepository;
@@ -32,6 +35,7 @@ public class NoteService : INoteService
         _noteOrderingService = noteOrderingService;
         _resourceOwnershipService = resourceOwnershipService;
         _sqidService = sqidService;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
@@ -108,14 +112,30 @@ public class NoteService : INoteService
 
             try
             {
-                Note createdNote = await _noteRepository.AddAsync(note, cancellationToken);
-                _logger.LogInformation("Created note {NoteId}", createdNote.NoteId);
-                return createdNote.ToResponse(_sqidService);
+                await _unitOfWork.BeginTransactionAsync(cancellationToken);
+                await _noteRepository.AddAsync(note, cancellationToken);
+                await _unitOfWork.CommitTransactionAsync(cancellationToken);
             }
             catch (Exception ex) when (attempt < MaxUniqueConflictRetries && IsUniqueSequenceConflict(ex))
             {
                 await _noteOrderingService.RebalanceAsync(studentId, request.DocumentSqid, cancellationToken);
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while creating note for student {StudentId}", studentId);
+                throw;
+            }
+
+            Note? createdNote = await _noteRepository.GetByIdAsync(note.NoteId, cancellationToken);
+
+            _logger.LogInformation("Created note {NoteId}", note.NoteId);
+
+            if (createdNote is null)
+            {
+                throw new InvalidOperationException("Note was created but could not be reloaded.");
+            }
+
+            return createdNote.ToResponse(_sqidService);
         }
 
         throw new InvalidOperationException("Unable to create note after retrying due to sequence conflicts.");
@@ -153,20 +173,31 @@ public class NoteService : INoteService
         }
 
         await EnsureDocumentExistsAsync(documentId, cancellationToken);
-        existingNote.UpdateDetails(request.Name, request.NoteContent);
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
-        if (existingNote.DocumentId != documentId)
+        try
         {
-            Document? targetDocument = await _documentRepository.GetTrackedByIdAsync(documentId, cancellationToken);
-            if (targetDocument is null)
+            existingNote.UpdateDetails(request.Name, request.NoteContent);
+
+            if (existingNote.DocumentId != documentId)
             {
-                throw new KeyNotFoundException($"Document with ID {documentId} not found.");
+                Document? targetDocument = await _documentRepository.GetTrackedByIdAsync(documentId, cancellationToken);
+                if (targetDocument is null)
+                {
+                    throw new KeyNotFoundException($"Document with ID {documentId} not found.");
+                }
+
+                targetDocument.ReassignNote(existingNote);
             }
 
-            targetDocument.ReassignNote(existingNote);
+            await _noteRepository.UpdateAsync(existingNote, cancellationToken);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
         }
-
-        await _noteRepository.UpdateAsync(existingNote, cancellationToken);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while updating note {NoteSqid}", sqid);
+            throw;
+        }
 
         _logger.LogInformation("Updated note {NoteSqid}", sqid);
         return true;
@@ -197,35 +228,53 @@ public class NoteService : INoteService
             return false;
         }
 
-        if (request.Name is not null)
-        {
-            existingNote.Rename(request.Name);
-        }
-
-        if (request.NoteContent is not null)
-        {
-            existingNote.UpdateContent(request.NoteContent);
-        }
-
+        long? patchedDocumentId = null;
         if (request.DocumentSqid is not null)
         {
-            if (!_sqidService.TryDecode(request.DocumentSqid, out long patchedDocumentId))
+            if (!_sqidService.TryDecode(request.DocumentSqid, out long decodedDocumentId))
             {
                 throw new ArgumentException("DocumentSqid is invalid.");
             }
 
-            await _resourceOwnershipService.EnsureDocumentOwnedByStudentAsync(patchedDocumentId, studentId, cancellationToken);
-            await EnsureDocumentExistsAsync(patchedDocumentId, cancellationToken);
-            Document? targetDocument = await _documentRepository.GetTrackedByIdAsync(patchedDocumentId, cancellationToken);
-            if (targetDocument is null)
-            {
-                throw new KeyNotFoundException($"Document with ID {patchedDocumentId} not found.");
-            }
-
-            targetDocument.ReassignNote(existingNote);
+            await _resourceOwnershipService.EnsureDocumentOwnedByStudentAsync(decodedDocumentId, studentId, cancellationToken);
+            await EnsureDocumentExistsAsync(decodedDocumentId, cancellationToken);
+            patchedDocumentId = decodedDocumentId;
         }
 
-        await _noteRepository.UpdateAsync(existingNote, cancellationToken);
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            if (request.Name is not null)
+            {
+                existingNote.Rename(request.Name);
+            }
+
+            if (request.NoteContent is not null)
+            {
+                existingNote.UpdateContent(request.NoteContent);
+            }
+
+            if (request.DocumentSqid is not null)
+            {
+                Document? targetDocument = await _documentRepository.GetTrackedByIdAsync(patchedDocumentId!.Value, cancellationToken);
+                if (targetDocument is null)
+                {
+                    throw new KeyNotFoundException($"Document with ID {patchedDocumentId.Value} not found.");
+                }
+
+                targetDocument.ReassignNote(existingNote);
+            }
+
+            await _noteRepository.UpdateAsync(existingNote, cancellationToken);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while patching note {NoteSqid}", sqid);
+            throw;
+        }
+
         _logger.LogInformation("Patched note {NoteSqid}", sqid);
 
         return true;
@@ -241,13 +290,28 @@ public class NoteService : INoteService
         }
 
         await _resourceOwnershipService.EnsureNoteOwnedByStudentAsync(noteId, studentId, cancellationToken);
-        bool isDeleted = await _noteRepository.SoftDeleteByIdAsync(noteId, cancellationToken);
-        if (isDeleted)
+        Note? existingNote = await _noteRepository.GetByIdAsync(noteId, cancellationToken);
+        if (existingNote is null)
         {
-            _logger.LogInformation("Deleted note {NoteSqid}", sqid);
+            return false;
         }
 
-        return isDeleted;
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            await _noteRepository.DeleteAsync(noteId, cancellationToken);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while deleting note {NoteSqid}", sqid);
+            throw;
+        }
+
+        _logger.LogInformation("Deleted note {NoteSqid}", sqid);
+
+        return true;
     }
 
     private async Task EnsureDocumentExistsAsync(long documentId, CancellationToken cancellationToken)
