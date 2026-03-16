@@ -69,7 +69,7 @@ public class DocumentRepository : IDocumentRepository
         await _dbContext.Documents.AddAsync(document, cancellationToken);
     }
 
-   public async Task UpdateAsync(Document document, CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(Document document, CancellationToken cancellationToken = default)
     {
         Document? existingDocument = await GetTrackedByIdAsync(document.DocumentId, cancellationToken);
 

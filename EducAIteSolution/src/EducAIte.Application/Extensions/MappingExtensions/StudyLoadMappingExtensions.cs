@@ -16,32 +16,12 @@ public static class StudyLoadMappingExtensions
     /// <summary>
     /// Maps a StudyLoad entity to a StudyLoadResponse DTO.
     /// </summary>
-    public static StudyLoadResponse ToResponse(this StudyLoad studyLoad) =>
-        new()
-        {
-            StudyLoadId = studyLoad.StudyLoadId,
-            StudentId = studyLoad.StudentId,
-            SchoolYear = studyLoad.SchoolYear.DisplayName,
-            Courses = studyLoad.Courses.Select(c => c.Adapt<CourseResponse>()),
-            TotalUnits = studyLoad.TotalUnits,
-            CreatedAt = studyLoad.CreatedAt,
-            UpdatedAt = studyLoad.UpdatedAt
-        };
+    public static StudyLoadResponse ToResponse(this StudyLoad studyLoad) => studyLoad.Adapt<StudyLoadResponse>();
 
     /// <summary>
-    /// Maps a StudyLoad entity to a StudyLoadDto.
+    /// Maps a StudyLoad entity to a StudyLoadResponse DTO.
     /// </summary>
-    public static StudyLoadDto ToDto(this StudyLoad studyLoad) =>
-        new()
-        {
-            StudyLoadId = studyLoad.StudyLoadId,
-            StudentId = studyLoad.StudentId,
-            SchoolYear = studyLoad.SchoolYear.DisplayName,
-            Courses = studyLoad.Courses.Select(c => c.Adapt<CourseResponse>()),
-            TotalUnits = studyLoad.TotalUnits,
-            CreatedAt = studyLoad.CreatedAt,
-            UpdatedAt = studyLoad.UpdatedAt
-        };
+    public static StudyLoadResponse ToDto(this StudyLoad studyLoad) => studyLoad.Adapt<StudyLoadResponse>();
 
     /// <summary>
     /// Maps a StudyLoadCreateRequest to a StudyLoad entity.
@@ -69,4 +49,6 @@ public static class StudyLoadMappingExtensions
         studyLoad.UpdatedAt = DateTime.UtcNow;
         return studyLoad;
     }
+
+    public static List<StudyLoadResponse> ToDtoList(this IEnumerable<StudyLoad> studyLoads) => studyLoads.Select(s => s.ToDto()).ToList();
 }

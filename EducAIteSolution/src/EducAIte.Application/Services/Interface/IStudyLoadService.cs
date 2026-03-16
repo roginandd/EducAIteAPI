@@ -7,8 +7,8 @@ using System.Threading;
 using EducAIte.Domain.Entities;
 public interface IStudyLoadService
 {
-    Task<StudyLoadDto?> GetStudyLoadByStudentIdAsync(long studentId, CancellationToken cancellationToken = default);
-    Task<StudyLoadDto> AddStudyLoadAsync(StudyLoadCreateRequest studyLoadCreateDto, CancellationToken cancellationToken = default);
-    Task<StudyLoadDto> UpdateStudyLoadAsync(long id, StudyLoadUpdateRequest studyLoadUpdateDto, CancellationToken cancellationToken = default);
+    Task<List<StudyLoadResponse>> GetStudyLoadByStudentIdAsync(string studentId, CancellationToken cancellationToken = default);
+    Task<StudyLoadResponse> AddStudyLoadAsync(StudyLoadCreateRequest studyLoadCreateDto, CancellationToken cancellationToken = default);
+    Task<StudyLoadResponse> UpdateStudyLoadAsync(long id, StudyLoadUpdateRequest studyLoadUpdateDto, CancellationToken cancellationToken = default);
     Task<bool> DeleteStudyLoadAsync(long id, CancellationToken cancellationToken = default);
 }

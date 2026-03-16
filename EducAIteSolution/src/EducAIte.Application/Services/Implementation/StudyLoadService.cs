@@ -7,6 +7,8 @@ using EducAIte.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 using EducAIte.Application.DTOs.Request;
 using EducAIte.Application.DTOs.Response;
+using EducAIte.Domain.Entities;
+using EducAIte.Application.Interfaces;
 
 /// <summary>
 /// Application service for StudyLoad operations.
@@ -16,17 +18,20 @@ public class StudyLoadService(
     IStudyLoadRepository studyLoadRepository,
     IStudentRepository studentRepository,
     ILogger<StudyLoadService> logger,
-    IAWSService awsService) : IStudyLoadService
+    IAWSService awsService,
+    IUnitOfWork unitOfWork
+    ) : IStudyLoadService
 {
     private readonly IStudyLoadRepository _studyLoadRepository = studyLoadRepository;
     private readonly IStudentRepository _studentRepository = studentRepository;
     private readonly ILogger<StudyLoadService> _logger = logger;
     private readonly IAWSService _awsService;
+    private readonly IUnitOfWork _unitOfWork = unitOfWork;
 
     /// <summary>
     /// Retrieves a study load by student ID.
     /// </summary>
-    public async Task<StudyLoadDto?> GetStudyLoadByStudentIdAsync(long studentId, CancellationToken cancellationToken = default)
+    public async Task<List<StudyLoadResponse>> GetStudyLoadByStudentIdAsync(string studentSqid, CancellationToken cancellationToken = default)
     {
         var student = await _studentRepository.GetByStudentIdAsync(studentId);
         if (student is null)
@@ -35,22 +40,22 @@ public class StudyLoadService(
             throw new KeyNotFoundException($"Student with ID {studentId} not found.");
         }
 
-        var studyLoad = await _studyLoadRepository.GetByStudentIdAsync(studentId, cancellationToken);
-        if (studyLoad is null)
+        var studyLoads = await _studyLoadRepository.GetByStudentIdAsync(studentId, cancellationToken);
+        if (studyLoads is null)
         {
             _logger.LogInformation("Study load for student ID {StudentId} not found.", studentId);
-            return null;
+            return [];
         }
 
         _logger.LogInformation("Retrieved study load for student ID {StudentId}.", studentId);
-        return studyLoad.ToDto();
+        return studyLoads.ToDtoList();
     }
 
     /// <summary>
     /// Creates a new study load for a student.
     /// Validates that the student exists before creating the study load.
     /// </summary>
-    public async Task<StudyLoadDto> AddStudyLoadAsync(StudyLoadCreateRequest studyLoadCreateDto, CancellationToken cancellationToken = default)
+    public async Task<StudyLoadResponse> AddStudyLoadAsync(StudyLoadCreateRequest studyLoadCreateDto, CancellationToken cancellationToken = default)
     {
         // Validate student exists
         var student = await _studentRepository.GetByStudentIdAsync(studyLoadCreateDto.StudentId);
@@ -78,7 +83,7 @@ public class StudyLoadService(
     /// <summary>
     /// Updates an existing study load.
     /// </summary>
-    public async Task<StudyLoadDto> UpdateStudyLoadAsync(long id, StudyLoadUpdateRequest studyLoadUpdateDto, CancellationToken cancellationToken = default)
+    public async Task<StudyLoadResponse> UpdateStudyLoadAsync(long id, StudyLoadUpdateRequest studyLoadUpdateDto, CancellationToken cancellationToken = default)
     {
         var existingStudyLoad = await _studyLoadRepository.GetByStudentIdAsync(id, cancellationToken);
         if (existingStudyLoad is null)

@@ -14,7 +14,7 @@ public class StudentRepository : IStudentRepository
 
     public async Task<Student?> GetByStudentIdAsync(long studentId, CancellationToken cancellationToken = default)
     {
-        Student? student = await _context.Students
+        Student? student = await _context.Students.AsNoTracking()
             .FirstOrDefaultAsync(student => student.StudentId == studentId, cancellationToken);
 
         if (student == null)
@@ -25,7 +25,7 @@ public class StudentRepository : IStudentRepository
 
     public async Task<Student?> GetByStudentIdNumberAsync(string studentIdNumber, CancellationToken cancellationToken = default)
     {
-        Student? student = await _context.Students
+        Student? student = await _context.Students.AsNoTracking()
             .FirstOrDefaultAsync(student => student.StudentIdNumber == studentIdNumber, cancellationToken);
 
         if (student == null)
