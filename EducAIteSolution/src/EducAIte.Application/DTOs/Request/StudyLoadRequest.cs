@@ -1,5 +1,6 @@
 namespace EducAIte.Application.DTOs.Request;
 
+
 /// <summary>
 /// Data Transfer Object for creating a new StudyLoad.
 /// </summary>
@@ -8,7 +9,7 @@ public record StudyLoadCreateRequest
     /// <summary>
     /// The student ID associated with this study load.
     /// </summary>
-    public required long StudentId { get; init; }
+    public required string StudentSqid { get; init; }
 
     /// <summary>
     /// The starting year of the school year.
@@ -19,6 +20,8 @@ public record StudyLoadCreateRequest
     /// The ending year of the school year.
     /// </summary>
     public required int SchoolYearEnd { get; init; }
+    public required int Semester { get; init; }
+    public required IFormFile StudyLoadDocument { get; init; }
 }
 
 /// <summary>
@@ -35,4 +38,9 @@ public record StudyLoadUpdateRequest
     /// The ending year of the school year.
     /// </summary>
     public int? SchoolYearEnd { get; init; }
+
+    /// <summary>
+    /// The semester.
+    /// </summary>
+    public int? Semester { get; init; }
 }

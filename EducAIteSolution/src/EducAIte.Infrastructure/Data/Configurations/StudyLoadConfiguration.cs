@@ -34,6 +34,10 @@ public class StudyLoadConfiguration : IEntityTypeConfiguration<StudyLoad>
             sy.Property(s => s.EndYear).HasColumnName("SchoolYearEnd").IsRequired();
         });
 
+        builder.Property(sl => sl.Semester)
+            .HasConversion<int>()
+            .IsRequired();
+
         // Relationships
         builder.HasOne(sl => sl.Student)
             .WithMany(s => s.StudyLoads)

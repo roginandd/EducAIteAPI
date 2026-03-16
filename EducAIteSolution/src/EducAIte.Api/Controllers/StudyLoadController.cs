@@ -32,10 +32,14 @@ public class StudyLoadController : ControllerBase
             var studyLoad = await _studyLoadService.GetStudyLoadByStudentIdAsync(studentId);
             if (studyLoad is null)
             {
-                return NotFound(new { message = $"Study load for student ID {studentId} not found." });
+                return NoContent();
             }
 
             return Ok(studyLoad);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
         catch (Exception ex)
         {
