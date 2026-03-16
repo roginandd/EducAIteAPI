@@ -33,7 +33,7 @@ public class DocumentRepository : IDocumentRepository
             .Include(document => document.Folder)
             .Include(document => document.FileMetadata)
             .Include(document => document.Notes)
-            .Include(document => document.Flashcards)
+            .ThenInclude(note => note.Flashcards)
             .FirstOrDefaultAsync(document =>
                 document.DocumentId == id &&
                 !document.Folder.IsDeleted &&
@@ -96,7 +96,7 @@ public class DocumentRepository : IDocumentRepository
             return;
         }
 
-        existingDocument.MarkDeletedWithChildren(existingDocument.Notes, existingDocument.Flashcards);
+        existingDocument.MarkDeletedWithChildren(existingDocument.Notes);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
     }

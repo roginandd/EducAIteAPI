@@ -20,9 +20,6 @@ public class Document
     private readonly HashSet<Note> _notes = new();
     public IReadOnlyCollection<Note> Notes => _notes.AsReadOnly();
 
-    private readonly HashSet<Flashcard> _flashcards = new();
-    public IReadOnlyCollection<Flashcard> Flashcards => _flashcards.AsReadOnly();
-
     // Soft delete flag
     public bool IsDeleted { get; private set; }
 
@@ -63,19 +60,13 @@ public class Document
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void MarkDeletedWithChildren(IEnumerable<Note> notes, IEnumerable<Flashcard> flashcards)
+    public void MarkDeletedWithChildren(IEnumerable<Note> notes)
     {
         ArgumentNullException.ThrowIfNull(notes);
-        ArgumentNullException.ThrowIfNull(flashcards);
 
         foreach (Note note in notes)
         {
-            note.MarkDeleted();
-        }
-
-        foreach (Flashcard flashcard in flashcards)
-        {
-            flashcard.MarkDeleted();
+            note.MarkDeletedWithChildren();
         }
 
         MarkDeleted();
@@ -99,24 +90,6 @@ public class Document
         _notes.Remove(note);
     }
 
-    public void AddFlashcard(Flashcard flashcard)
-    {
-        ArgumentNullException.ThrowIfNull(flashcard);
-        EnsureNotDeleted();
-        EnsureFlashcardBelongsToDocument(flashcard);
-
-        flashcard.AssignToDocument(this);
-        _flashcards.Add(flashcard);
-    }
-
-    public void RemoveFlashcard(Flashcard flashcard)
-    {
-        if (flashcard == null)
-            return;
-
-        _flashcards.Remove(flashcard);
-    }
-
     public void ReassignNote(Note note)
     {
         ArgumentNullException.ThrowIfNull(note);
@@ -134,23 +107,6 @@ public class Document
         _notes.Add(note);
     }
 
-    public void ReassignFlashcard(Flashcard flashcard)
-    {
-        ArgumentNullException.ThrowIfNull(flashcard);
-        EnsureNotDeleted();
-
-        if (flashcard.IsDeleted)
-            throw new InvalidOperationException("Cannot associate a deleted flashcard with a document.");
-
-        if (flashcard.Document is not null && !ReferenceEquals(flashcard.Document, this))
-        {
-            flashcard.Document.RemoveFlashcard(flashcard);
-        }
-
-        flashcard.AssignToDocument(this);
-        _flashcards.Add(flashcard);
-    }
-
     private void EnsureNotDeleted()
     {
         if (IsDeleted)
@@ -164,15 +120,6 @@ public class Document
 
         if (note.DocumentId != DocumentId)
             throw new InvalidOperationException("Note is associated with a different document.");
-    }
-
-    private void EnsureFlashcardBelongsToDocument(Flashcard flashcard)
-    {
-        if (flashcard.IsDeleted)
-            throw new InvalidOperationException("Cannot associate a deleted flashcard with a document.");
-
-        if (flashcard.DocumentId != DocumentId)
-            throw new InvalidOperationException("Flashcard is associated with a different document.");
     }
 
     private static string NormalizeDocumentName(string documentName)
