@@ -75,7 +75,6 @@ public class StudentConfiguration : IEntityTypeConfiguration<Student>
         // Folders relationship is configured in FolderConfiguration
         // UploadedFiles relationship is configured in FileMetadataConfiguration
         // Flashcards relationship is configured in StudentFlashcardConfiguration
-        // EnrolledCourses relationship is configured in StudentCourseConfiguration
         // Certifications relationship is configured in CertificationConfiguration
     }
 }

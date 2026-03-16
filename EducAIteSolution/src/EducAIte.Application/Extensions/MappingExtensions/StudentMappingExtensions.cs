@@ -1,16 +1,29 @@
 using EducAIte.Application.DTOs.Request;
 using EducAIte.Application.DTOs.Response;
+using EducAIte.Application.Services.Interface;
 using EducAIte.Domain.Entities;
 using Mapster;
-using Microsoft.AspNetCore.Identity.Data;
 
 namespace EducAIte.Application.Extensions.MappingExtensions;
 
 public static class StudentMappingExtensions
 {
-    public static StudentBriefResponse ToBriefDTO(this Student student) => student.BuildAdapter().AddParameters("FullName", $"{student.FirstName} {student.LastName}").Adapt<StudentBriefResponse>();
+    public static StudentBriefResponse ToBriefDTO(this Student student, ISqidService sqidService)
+    {
+        return student
+            .BuildAdapter()
+            .AddParameters("sqidService", sqidService)
+            .AddParameters("FullName", $"{student.FirstName} {student.LastName}")
+            .AdaptToType<StudentBriefResponse>();
+    }
 
-    public static StudentResponse ToDTO(this Student student) => student.Adapt<StudentResponse>();
+    public static StudentResponse ToDTO(this Student student, ISqidService sqidService)
+    {
+        return student
+            .BuildAdapter()
+            .AddParameters("sqidService", sqidService)
+            .AdaptToType<StudentResponse>();
+    }
 
     public static Student toEntity(this StudentRegistrationRequest request)
     {
@@ -21,5 +34,11 @@ public static class StudentMappingExtensions
         return student;
     }
 
-    public static StudentProfileResponse ToStudentProfile(this Student student) => student.Adapt<StudentProfileResponse>();
+    public static StudentProfileResponse ToStudentProfile(this Student student, ISqidService sqidService)
+    {
+        return student
+            .BuildAdapter()
+            .AddParameters("sqidService", sqidService)
+            .AdaptToType<StudentProfileResponse>();
+    }
 }
