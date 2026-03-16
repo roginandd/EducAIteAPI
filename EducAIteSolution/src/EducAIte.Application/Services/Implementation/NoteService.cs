@@ -50,7 +50,7 @@ public class NoteService : INoteService
         await _resourceOwnershipService.EnsureNoteOwnedByStudentAsync(noteId, studentId, cancellationToken);
         Note? note = await _noteRepository.GetByIdAsync(noteId, cancellationToken);
 
-        return note is null ? null : note.ToResponse();
+        return note is null ? null : note.ToResponse(_sqidService);
     }
 
     public async Task<IReadOnlyList<NoteResponse>> GetNotesByDocumentAsync(
@@ -70,7 +70,7 @@ public class NoteService : INoteService
             documentId,
             studentId,
             cancellationToken);
-        return notes.Select(n => n.ToResponse()).ToList();
+        return notes.Select(n => n.ToResponse(_sqidService)).ToList();
     }
 
     public async Task<IReadOnlyList<NoteResponse>> GetNotesByStudentAsync(long studentId, CancellationToken cancellationToken = default)
@@ -81,7 +81,7 @@ public class NoteService : INoteService
         }
 
         IReadOnlyList<Note> notes = await _noteRepository.GetAllByStudentIdAsync(studentId, cancellationToken);
-        return notes.Select(n => n.ToResponse()).ToList();
+        return notes.Select(n => n.ToResponse(_sqidService)).ToList();
     }
 
     public async Task<NoteResponse> CreateNoteAsync(
@@ -110,7 +110,7 @@ public class NoteService : INoteService
             {
                 Note createdNote = await _noteRepository.AddAsync(note, cancellationToken);
                 _logger.LogInformation("Created note {NoteId}", createdNote.NoteId);
-                return createdNote.ToResponse();
+                return createdNote.ToResponse(_sqidService);
             }
             catch (Exception ex) when (attempt < MaxUniqueConflictRetries && IsUniqueSequenceConflict(ex))
             {
