@@ -1,3 +1,4 @@
 EducAIteSolution/obj/Debug/net10.0/EducAIteSolution.GeneratedMSBuildEditorConfig.editorconfig
 AGENTS.md
 *.pem
+.dotnet-cli/*
