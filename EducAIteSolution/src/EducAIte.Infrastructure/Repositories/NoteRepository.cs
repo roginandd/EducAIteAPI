@@ -63,12 +63,9 @@ public sealed class NoteRepository : INoteRepository
             .FirstOrDefaultAsync(cancellationToken);
     }
 
-    public async Task<Note> AddAsync(Note note, CancellationToken cancellationToken = default)
+    public async Task AddAsync(Note note, CancellationToken cancellationToken = default)
     {
         _context.Notes.Add(note);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        return await GetByIdAsync(note.NoteId, cancellationToken) ?? note;
     }
 
     public async Task UpdateAsync(Note note, CancellationToken cancellationToken = default)
@@ -80,7 +77,6 @@ public sealed class NoteRepository : INoteRepository
             _context.Entry(note).State = EntityState.Modified;
         }
 
-        await _context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<Note?> GetByIdAsync(long noteId, CancellationToken cancellationToken = default)
@@ -111,7 +107,7 @@ public sealed class NoteRepository : INoteRepository
             .FirstOrDefaultAsync(n => n.NoteId == noteId && n.DocumentId == documentId, cancellationToken);
     }
 
-    public async Task<bool> SoftDeleteByIdAsync(long noteId, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(long noteId, CancellationToken cancellationToken = default)
     {
         Note? note = await _context
             .Notes
@@ -119,13 +115,10 @@ public sealed class NoteRepository : INoteRepository
 
         if (note is null)
         {
-            return false;
+            return;
         }
 
         note.MarkDeleted();
-        await _context.SaveChangesAsync(cancellationToken);
-
-        return true;
     }
 
     public async Task RebalanceDocumentAsync(long documentId, decimal step, CancellationToken cancellationToken = default)
