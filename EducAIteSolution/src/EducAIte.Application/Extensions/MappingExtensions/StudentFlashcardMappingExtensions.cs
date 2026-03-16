@@ -1,7 +1,7 @@
 using EducAIte.Application.DTOs.Response;
 using EducAIte.Application.Services.Interface;
 using EducAIte.Domain.Entities;
-using EducAIte.Domain.Enum;
+using Mapster;
 
 namespace EducAIte.Application.Extensions.MappingExtensions;
 
@@ -14,7 +14,10 @@ public static class StudentFlashcardMappingExtensions
         ArgumentNullException.ThrowIfNull(studentFlashcard);
         ArgumentNullException.ThrowIfNull(sqidService);
 
-        return studentFlashcard.ToProgressResponse(studentFlashcard.Flashcard, sqidService);
+        return studentFlashcard
+            .BuildAdapter()
+            .AddParameters("sqidService", sqidService)
+            .AdaptToType<StudentFlashcardProgressResponse>();
     }
 
     public static StudentFlashcardProgressResponse ToProgressResponse(
@@ -26,23 +29,11 @@ public static class StudentFlashcardMappingExtensions
         ArgumentNullException.ThrowIfNull(flashcard);
         ArgumentNullException.ThrowIfNull(sqidService);
 
-        return new StudentFlashcardProgressResponse
-        {
-            FlashcardSqid = sqidService.Encode(flashcard.FlashcardId),
-            DocumentSqid = sqidService.Encode(flashcard.DocumentId),
-            CorrectCount = studentFlashcard.CorrectCount,
-            WrongCount = studentFlashcard.WrongCount,
-            TotalAttempts = studentFlashcard.TotalAttempts,
-            ConsecutiveCorrectCount = studentFlashcard.ConsecutiveCorrectCount,
-            ReviewCount = studentFlashcard.ReviewCount,
-            LapseCount = studentFlashcard.LapseCount,
-            ReviewState = studentFlashcard.State.ToString(),
-            LastReviewOutcome = studentFlashcard.LastReviewOutcome?.ToString(),
-            LastReviewedAt = studentFlashcard.LastReviewedAt,
-            NextReviewAt = studentFlashcard.NextReviewAt,
-            CreatedAt = studentFlashcard.CreatedAt,
-            UpdatedAt = studentFlashcard.UpdatedAt
-        };
+        return studentFlashcard
+            .BuildAdapter()
+            .AddParameters("sqidService", sqidService)
+            .AddParameters("flashcard", flashcard)
+            .AdaptToType<StudentFlashcardProgressResponse>();
     }
 
     public static FlashcardReviewItemResponse ToReviewItemResponse(
@@ -52,21 +43,10 @@ public static class StudentFlashcardMappingExtensions
         ArgumentNullException.ThrowIfNull(studentFlashcard);
         ArgumentNullException.ThrowIfNull(sqidService);
 
-        Flashcard flashcard = studentFlashcard.Flashcard;
-
-        return new FlashcardReviewItemResponse
-        {
-            FlashcardSqid = sqidService.Encode(flashcard.FlashcardId),
-            DocumentSqid = sqidService.Encode(flashcard.DocumentId),
-            Question = flashcard.Question,
-            CorrectCount = studentFlashcard.CorrectCount,
-            WrongCount = studentFlashcard.WrongCount,
-            TotalAttempts = studentFlashcard.TotalAttempts,
-            IsTracked = true,
-            ReviewState = studentFlashcard.State.ToString(),
-            LastReviewedAt = studentFlashcard.LastReviewedAt,
-            NextReviewAt = studentFlashcard.NextReviewAt
-        };
+        return studentFlashcard
+            .BuildAdapter()
+            .AddParameters("sqidService", sqidService)
+            .AdaptToType<FlashcardReviewItemResponse>();
     }
 
     public static FlashcardReviewItemResponse ToReviewItemResponse(
@@ -77,18 +57,10 @@ public static class StudentFlashcardMappingExtensions
         ArgumentNullException.ThrowIfNull(flashcard);
         ArgumentNullException.ThrowIfNull(sqidService);
 
-        return new FlashcardReviewItemResponse
-        {
-            FlashcardSqid = sqidService.Encode(flashcard.FlashcardId),
-            DocumentSqid = sqidService.Encode(flashcard.DocumentId),
-            Question = flashcard.Question,
-            CorrectCount = 0,
-            WrongCount = 0,
-            TotalAttempts = 0,
-            IsTracked = false,
-            ReviewState = FlashcardReviewState.New.ToString(),
-            LastReviewedAt = null,
-            NextReviewAt = availableAt
-        };
+        return flashcard
+            .BuildAdapter()
+            .AddParameters("sqidService", sqidService)
+            .AddParameters("availableAt", availableAt)
+            .AdaptToType<FlashcardReviewItemResponse>();
     }
 }
