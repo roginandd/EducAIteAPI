@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Amazon.S3;
 using Amazon.S3.Model;
+using EducAIte.Application.DTOs.Request;
 using EducAIte.Application.Services.Interface;
 
 public class AWSService(
@@ -19,11 +20,32 @@ public class AWSService(
     private readonly string _cloudFrontKeyPairId = cloudFrontKeyPairId;
     private readonly string _cloudFrontPrivateKey = cloudFrontPrivateKey;
 
-    public async Task<string> UploadFileAsync(IFormFile file, CancellationToken cancellationToken)
+    public Task<string> UploadNoteContextAsync(UploadNoteContextRequest uploadNoteContextRequest, CancellationToken cancellationToken)
+    {
+        var extension = Path.GetExtension(uploadNoteContextRequest.File.FileName);
+        var key = $"users/{uploadNoteContextRequest.UserSqid}/notes/{uploadNoteContextRequest.NoteSqid}/context/{new Guid()}_{extension}";
+        return UploadFileAsync(uploadNoteContextRequest.File, key, cancellationToken);
+    }
+
+    public Task<string> UploadNoteImages(UploadNoteImagesRequest uploadNoteImagesRequest, CancellationToken cancellationToken)
+    {
+        var extension = Path.GetExtension(uploadNoteImagesRequest.File.FileName);
+        var key = $"users/{uploadNoteImagesRequest.UserSqid}/notes/{uploadNoteImagesRequest.NoteSqid}/images/{new Guid()}_{extension}";
+        return UploadFileAsync(uploadNoteImagesRequest.File, key, cancellationToken);
+    }
+
+    public Task<string> UploadStudyLoad(StudyLoadCreateRequest studyLoadCreateRequest, CancellationToken cancellationToken)
+    {
+        var extension = Path.GetExtension(studyLoadCreateRequest.StudyLoadDocument.FileName);
+        var key = $"users/{studyLoadCreateRequest.StudentSqid}/study-loads/{studyLoadCreateRequest.SchoolYearStart}-{studyLoadCreateRequest.SchoolYearEnd}_{studyLoadCreateRequest.SchoolYearEnd}/{studyLoadCreateRequest.Semester}/{new Guid()}_{extension}";
+        return UploadFileAsync(studyLoadCreateRequest.StudyLoadDocument, key, cancellationToken);
+    }
+
+    private async Task<string> UploadFileAsync(IFormFile file, string path, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var key = $"{Guid.NewGuid()}_{file.FileName}";
+        var key = path;
 
         using (var stream = file.OpenReadStream())
         {
@@ -59,5 +81,20 @@ public class AWSService(
             .Replace('/', '~');
 
         return $"https://{_cloudFrontDomain}/{key}?Expires={expiry}&Signature={encodedSignature}&Key-Pair-Id={_cloudFrontKeyPairId}";
+    }
+
+    public string GenerateNoteContextSignedUrl(string key, TimeSpan validFor, CancellationToken cancellationToken)
+    {
+        return GenerateSignedUrl(key, validFor, cancellationToken);
+    }
+
+    public string GenerateNoteImageSignedUrl(string key, TimeSpan validFor, CancellationToken cancellationToken)
+    {
+        return GenerateSignedUrl(key, validFor, cancellationToken);
+    }
+
+    public string GenerateStudyLoadSignedUrl(string key, TimeSpan validFor, CancellationToken cancellationToken)
+    {
+        return GenerateSignedUrl(key, validFor, cancellationToken);
     }
 }

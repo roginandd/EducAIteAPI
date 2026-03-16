@@ -15,17 +15,26 @@ using EducAIte.Application.DTOs.Response;
 public class StudyLoadService(
     IStudyLoadRepository studyLoadRepository,
     IStudentRepository studentRepository,
-    ILogger<StudyLoadService> logger) : IStudyLoadService
+    ILogger<StudyLoadService> logger,
+    IAWSService awsService) : IStudyLoadService
 {
     private readonly IStudyLoadRepository _studyLoadRepository = studyLoadRepository;
     private readonly IStudentRepository _studentRepository = studentRepository;
     private readonly ILogger<StudyLoadService> _logger = logger;
+    private readonly IAWSService _awsService;
 
     /// <summary>
     /// Retrieves a study load by student ID.
     /// </summary>
     public async Task<StudyLoadDto?> GetStudyLoadByStudentIdAsync(long studentId, CancellationToken cancellationToken = default)
     {
+        var student = await _studentRepository.GetByStudentIdAsync(studentId);
+        if (student is null)
+        {
+            _logger.LogWarning("Attempted to retrieve study load for non-existent student ID {StudentId}.", studentId);
+            throw new KeyNotFoundException($"Student with ID {studentId} not found.");
+        }
+
         var studyLoad = await _studyLoadRepository.GetByStudentIdAsync(studentId, cancellationToken);
         if (studyLoad is null)
         {
@@ -57,6 +66,8 @@ public class StudyLoadService(
         {
             throw new InvalidOperationException($"Student {studyLoadCreateDto.StudentId} already has a study load.");
         }
+
+        string studyLoadPath = await _awsService.UploadFileAsync(studyLoadCreateDto.StudyLoadDocument!, $"studyloads/{studyLoadCreateDto.StudentId}/{Guid.NewGuid()}.pdf", cancellationToken);
 
         var newStudyLoad = studyLoadCreateDto.ToEntity();
         var createdStudyLoad = await _studyLoadRepository.AddStudyLoadAsync(newStudyLoad, cancellationToken);

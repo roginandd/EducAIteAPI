@@ -1,3 +1,4 @@
+using EducAIte.Domain.Enum;
 using EducAIte.Domain.ValueObjects;
 
 namespace EducAIte.Domain.Entities;
@@ -18,7 +19,7 @@ public class StudyLoad
 
     // Properties
     public required SchoolYear SchoolYear{ get; set; }
-
+    public required Semester Semester { get; set; }
     public ICollection<Course> Courses{ get; set; } = new HashSet<Course>();
 
     public int TotalUnits => Courses.Sum(course => course.Units);
