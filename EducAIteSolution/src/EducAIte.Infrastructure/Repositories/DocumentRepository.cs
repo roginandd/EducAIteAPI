@@ -64,27 +64,18 @@ public class DocumentRepository : IDocumentRepository
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<Document> AddAsync(Document document, CancellationToken cancellationToken = default)
+    public async Task AddAsync(Document document, CancellationToken cancellationToken = default)
     {
         await _dbContext.Documents.AddAsync(document, cancellationToken);
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        return await GetByIdAsync(document.DocumentId, cancellationToken) ?? document;
     }
 
-    public async Task UpdateAsync(Document document, CancellationToken cancellationToken = default)
+   public async Task UpdateAsync(Document document, CancellationToken cancellationToken = default)
     {
-        Document? existingDocument = await _dbContext.Documents
-            .FirstOrDefaultAsync(existing => existing.DocumentId == document.DocumentId, cancellationToken);
+        Document? existingDocument = await GetTrackedByIdAsync(document.DocumentId, cancellationToken);
 
-        if (existingDocument is null)
-        {
-            return;
-        }
+        if (existingDocument is null) return;
 
         existingDocument.UpdateDetails(document.DocumentName, document.FolderId, document.FileMetadataId);
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task DeleteAsync(long id, CancellationToken cancellationToken = default)
@@ -98,7 +89,6 @@ public class DocumentRepository : IDocumentRepository
 
         existingDocument.MarkDeletedWithChildren(existingDocument.Notes);
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public async Task<long?> GetFolderStudentIdAsync(long folderId, CancellationToken cancellationToken = default)

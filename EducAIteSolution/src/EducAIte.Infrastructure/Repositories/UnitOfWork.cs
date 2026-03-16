@@ -5,52 +5,24 @@ using Microsoft.EntityFrameworkCore.Storage;
 
 namespace EducAIte.Infrastructure.Repositories;
 
-public sealed class UnitOfWork : IUnitOfWork
+public sealed class UnitOfWork : IUnitOfWork, IAsyncDisposable
 {
     private readonly ApplicationDbContext _context;
     private IDbContextTransaction? _currentTransaction;
     private bool _disposed;
 
-    public UnitOfWork(
-        ApplicationDbContext context,
-        ICourseRepository courses,
-        IDocumentRepository documents,
-        IFlashcardRepository flashcards,
-        INoteRepository notes,
-        IStudentRepository students,
-        IStudentFlashcardRepository studentFlashcards)
+    public UnitOfWork(ApplicationDbContext context)
     {
         _context = context;
-        Courses = courses;
-        Documents = documents;
-        Flashcards = flashcards;
-        Notes = notes;
-        Students = students;
-        StudentFlashcards = studentFlashcards;
     }
 
-    public ICourseRepository Courses { get; }
-
-    public IDocumentRepository Documents { get; }
-
-    public IFlashcardRepository Flashcards { get; }
-
-    public INoteRepository Notes { get; }
-
-    public IStudentRepository Students { get; }
-
-    public IStudentFlashcardRepository StudentFlashcards { get; }
-
-    public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        return _context.SaveChangesAsync(cancellationToken);
-    }
+  
 
     public async Task BeginTransactionAsync(CancellationToken cancellationToken = default)
     {
         if (_currentTransaction is not null)
         {
-            return;
+            throw new InvalidOperationException("A transaction is already in progress.");
         }
 
         _currentTransaction = await _context.Database.BeginTransactionAsync(cancellationToken);
@@ -67,6 +39,11 @@ public sealed class UnitOfWork : IUnitOfWork
         {
             await _context.SaveChangesAsync(cancellationToken);
             await _currentTransaction.CommitAsync(cancellationToken);
+        } 
+        catch
+        {
+            await _currentTransaction.RollbackAsync(cancellationToken);
+            throw;
         }
         finally
         {
@@ -101,7 +78,22 @@ public sealed class UnitOfWork : IUnitOfWork
         }
 
         _currentTransaction?.Dispose();
+        _context.Dispose();
         _currentTransaction = null;
+        _disposed = true;
+    }
+      
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed) return;
+
+        if (_currentTransaction is not null)
+        {
+            await _currentTransaction.DisposeAsync();
+            _currentTransaction = null;
+        }
+
+        await _context.DisposeAsync();
         _disposed = true;
     }
 }
