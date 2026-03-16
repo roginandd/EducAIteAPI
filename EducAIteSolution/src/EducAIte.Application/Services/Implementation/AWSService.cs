@@ -41,7 +41,7 @@ public class AWSService(
         return UploadFileAsync(studyLoadCreateRequest.StudyLoadDocument, key, cancellationToken);
     }
 
-    private async Task<string> UploadFileAsync(IFormFile file, string path, CancellationToken cancellationToken)
+    public async Task<string> UploadFileAsync(IFormFile file, string path, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
