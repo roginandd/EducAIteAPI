@@ -10,8 +10,8 @@ public class Flashcard
     public string Answer { get; private set; } = string.Empty;
 
     // Foreign Key
-    public long DocumentId { get; private set; }
-    public Document Document { get; private set; } = null!;
+    public long NoteId { get; private set; }
+    public Note Note { get; private set; } = null!;
     
     // Additional Properties
     public bool IsDeleted { get; private set; }
@@ -24,11 +24,11 @@ public class Flashcard
 
     private Flashcard() { }
 
-    public Flashcard(string question, string answer, long documentId)
+    public Flashcard(string question, string answer, long noteId)
     {
         Question = NormalizeQuestion(question);
         Answer = NormalizeAnswer(answer);
-        DocumentId = ValidatePositiveId(documentId, nameof(documentId));
+        NoteId = ValidatePositiveId(noteId, nameof(noteId));
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
     }
@@ -41,18 +41,18 @@ public class Flashcard
         UpdatedAt = DateTime.UtcNow;
     }
 
-    internal void AssignToDocument(Document document)
+    internal void AssignToNote(Note note)
     {
-        ArgumentNullException.ThrowIfNull(document);
+        ArgumentNullException.ThrowIfNull(note);
         EnsureNotDeleted();
 
-        if (document.IsDeleted)
+        if (note.IsDeleted)
         {
-            throw new InvalidOperationException("Cannot associate a flashcard with a deleted document.");
+            throw new InvalidOperationException("Cannot associate a flashcard with a deleted note.");
         }
 
-        DocumentId = ValidatePositiveId(document.DocumentId, nameof(document.DocumentId));
-        Document = document;
+        NoteId = ValidatePositiveId(note.NoteId, nameof(note.NoteId));
+        Note = note;
         UpdatedAt = DateTime.UtcNow;
     }
 

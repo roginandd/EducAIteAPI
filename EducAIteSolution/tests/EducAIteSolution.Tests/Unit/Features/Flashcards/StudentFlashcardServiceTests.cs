@@ -1,9 +1,11 @@
 using EducAIte.Application.DTOs.Request;
 using EducAIte.Application.DTOs.Response;
+using EducAIte.Application.Extensions;
 using EducAIte.Application.Services.Implementation;
 using EducAIte.Application.Services.Interface;
 using EducAIte.Domain.Entities;
 using EducAIte.Domain.Interfaces;
+using Mapster;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -16,6 +18,11 @@ public class StudentFlashcardServiceTests
     private readonly Mock<ILogger<StudentFlashcardService>> _loggerMock;
     private readonly ISqidService _sqidService;
     private readonly StudentFlashcardService _studentFlashcardService;
+
+    static StudentFlashcardServiceTests()
+    {
+        TypeAdapterConfig.GlobalSettings.Scan(typeof(DependencyInjection).Assembly);
+    }
 
     public StudentFlashcardServiceTests()
     {
@@ -35,7 +42,7 @@ public class StudentFlashcardServiceTests
     public async Task StartTrackingAsync_WithArchivedProgress_RestoresProgress()
     {
         long flashcardId = 14;
-        Flashcard flashcard = CreateFlashcard(flashcardId, 22);
+        Flashcard flashcard = CreateFlashcard(flashcardId, 22, 30, 7);
         StudentFlashcard archived = new(7, flashcardId);
         archived.MarkDeleted();
 
@@ -52,6 +59,9 @@ public class StudentFlashcardServiceTests
         StudentFlashcardProgressResponse result = await _studentFlashcardService.StartTrackingAsync(_sqidService.Encode(flashcardId), 7);
 
         Assert.Equal(0, result.TotalAttempts);
+        Assert.Equal(_sqidService.Encode(flashcardId), result.FlashcardSqid);
+        Assert.Equal(_sqidService.Encode(22), result.NoteSqid);
+        Assert.Equal(_sqidService.Encode(30), result.DocumentSqid);
         Assert.False(archived.IsDeleted);
         _studentFlashcardRepositoryMock.Verify(repository => repository.UpdateAsync(archived, default), Times.Once);
     }
@@ -60,7 +70,7 @@ public class StudentFlashcardServiceTests
     public async Task RecordCorrectAsync_WithoutExistingProgress_CreatesAndUpdatesProgress()
     {
         long flashcardId = 21;
-        Flashcard flashcard = CreateFlashcard(flashcardId, 40);
+        Flashcard flashcard = CreateFlashcard(flashcardId, 40, 50, 7);
 
         _flashcardRepositoryMock
             .Setup(repository => repository.GetByIdAndStudentIdAsync(flashcardId, 7, default))
@@ -87,7 +97,7 @@ public class StudentFlashcardServiceTests
     public async Task SubmitAttemptAsync_WithCorrectAnswer_ReturnsScheduledResult()
     {
         long flashcardId = 24;
-        Flashcard flashcard = CreateFlashcard(flashcardId, 40, "Question", "Correct Answer");
+        Flashcard flashcard = CreateFlashcard(flashcardId, 40, 50, 7, "Question", "Correct Answer");
 
         _flashcardRepositoryMock
             .Setup(repository => repository.GetByIdAndStudentIdAsync(flashcardId, 7, default))
@@ -119,7 +129,7 @@ public class StudentFlashcardServiceTests
     public async Task SubmitAttemptAsync_WithWrongAnswer_ReturnsLocalRequeueHint()
     {
         long flashcardId = 25;
-        Flashcard flashcard = CreateFlashcard(flashcardId, 41, "Question", "Correct Answer");
+        Flashcard flashcard = CreateFlashcard(flashcardId, 41, 51, 7, "Question", "Correct Answer");
         StudentFlashcard progress = new(7, flashcardId);
 
         _flashcardRepositoryMock
@@ -147,7 +157,7 @@ public class StudentFlashcardServiceTests
     public async Task ResetProgressAsync_WithExistingProgress_ResetsCounters()
     {
         long flashcardId = 33;
-        Flashcard flashcard = CreateFlashcard(flashcardId, 45);
+        Flashcard flashcard = CreateFlashcard(flashcardId, 45, 55, 7);
         StudentFlashcard progress = new(7, flashcardId);
         SetPrivateProperty(progress, nameof(StudentFlashcard.Flashcard), flashcard);
         progress.MarkCorrect();
@@ -175,11 +185,11 @@ public class StudentFlashcardServiceTests
         long secondFlashcardId = 61;
 
         StudentFlashcard first = new(7, firstFlashcardId);
-        SetPrivateProperty(first, nameof(StudentFlashcard.Flashcard), CreateFlashcard(firstFlashcardId, 90, "Question A", "Answer A"));
+        SetPrivateProperty(first, nameof(StudentFlashcard.Flashcard), CreateFlashcard(firstFlashcardId, 90, 100, 7, "Question A", "Answer A"));
         first.MarkWrong();
 
         StudentFlashcard second = new(7, secondFlashcardId);
-        SetPrivateProperty(second, nameof(StudentFlashcard.Flashcard), CreateFlashcard(secondFlashcardId, 91, "Question B", "Answer B"));
+        SetPrivateProperty(second, nameof(StudentFlashcard.Flashcard), CreateFlashcard(secondFlashcardId, 91, 101, 7, "Question B", "Answer B"));
         second.MarkCorrect();
 
         _studentFlashcardRepositoryMock
@@ -190,6 +200,7 @@ public class StudentFlashcardServiceTests
 
         Assert.Equal(2, result.Count);
         Assert.Equal("Question A", result[0].Question);
+        Assert.Equal(_sqidService.Encode(firstFlashcardId), result[0].FlashcardSqid);
         Assert.Equal(1, result[0].WrongCount);
     }
 
@@ -199,12 +210,12 @@ public class StudentFlashcardServiceTests
         long dueFlashcardId = 80;
         long newFlashcardId = 81;
         StudentFlashcard dueProgress = new(7, dueFlashcardId);
-        SetPrivateProperty(dueProgress, nameof(StudentFlashcard.Flashcard), CreateFlashcard(dueFlashcardId, 90, "Due Question", "Due Answer"));
+        SetPrivateProperty(dueProgress, nameof(StudentFlashcard.Flashcard), CreateFlashcard(dueFlashcardId, 90, 100, 7, "Due Question", "Due Answer"));
         dueProgress.MarkWrong();
         dueProgress.ResetProgress(DateTime.UtcNow.AddMinutes(-10));
         dueProgress.ApplyWrongReview(DateTime.UtcNow.AddMinutes(-6));
 
-        Flashcard newFlashcard = CreateFlashcard(newFlashcardId, 91, "New Question", "New Answer");
+        Flashcard newFlashcard = CreateFlashcard(newFlashcardId, 91, 101, 7, "New Question", "New Answer");
 
         _studentFlashcardRepositoryMock
             .Setup(repository => repository.GetDueBatchByStudentIdAsync(7, It.IsAny<DateTime>(), It.IsAny<IReadOnlyCollection<long>>(), 2, default))
@@ -228,7 +239,7 @@ public class StudentFlashcardServiceTests
     public async Task ArchiveProgressAsync_WithExistingProgress_SoftDeletesProgress()
     {
         long flashcardId = 75;
-        Flashcard flashcard = CreateFlashcard(flashcardId, 101);
+        Flashcard flashcard = CreateFlashcard(flashcardId, 101, 111, 7);
         StudentFlashcard progress = new(7, flashcardId);
 
         _flashcardRepositoryMock
@@ -244,10 +255,45 @@ public class StudentFlashcardServiceTests
         _studentFlashcardRepositoryMock.Verify(repository => repository.UpdateAsync(progress, default), Times.Once);
     }
 
-    private static Flashcard CreateFlashcard(long flashcardId, long documentId, string question = "Question", string answer = "Answer")
+    private static Flashcard CreateFlashcard(
+        long flashcardId,
+        long noteId,
+        long documentId,
+        long studentId,
+        string question = "Question",
+        string answer = "Answer")
     {
-        Flashcard flashcard = new(question, answer, documentId);
+        Document document = new("Linked Document", 3, 9)
+        {
+            Folder = new Folder
+            {
+                FolderId = 3,
+                StudentId = studentId,
+                CourseId = 5,
+                SchoolYear = new EducAIte.Domain.ValueObjects.SchoolYear(2025, 2026),
+                FolderKey = "folder-3",
+                Name = "Lecture Files"
+            },
+            FileMetadata = new FileMetadata
+            {
+                FileMetaDataId = 9,
+                FileName = "notes.pdf",
+                FileExtension = ".pdf",
+                ContentType = "application/pdf",
+                StorageKey = "documents/notes.pdf",
+                FileSizeInBytes = 1024,
+                StudentId = studentId
+            }
+        };
+        SetPrivateProperty(document, nameof(Document.DocumentId), documentId);
+
+        Note note = new("Linked Note", "Note content", documentId, 1m);
+        SetPrivateProperty(note, nameof(Note.NoteId), noteId);
+        SetPrivateProperty(note, nameof(Note.Document), document);
+
+        Flashcard flashcard = new(question, answer, noteId);
         SetPrivateProperty(flashcard, nameof(Flashcard.FlashcardId), flashcardId);
+        SetPrivateProperty(flashcard, nameof(Flashcard.Note), note);
         return flashcard;
     }
 

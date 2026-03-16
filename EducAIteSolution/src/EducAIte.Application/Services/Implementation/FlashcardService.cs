@@ -12,6 +12,7 @@ public sealed class FlashcardService : IFlashcardService
 {
     private readonly IFlashcardRepository _flashcardRepository;
     private readonly IDocumentRepository _documentRepository;
+    private readonly INoteRepository _noteRepository;
     private readonly IStudentFlashcardRepository _studentFlashcardRepository;
     private readonly IResourceOwnershipService _resourceOwnershipService;
     private readonly ISqidService _sqidService;
@@ -20,6 +21,7 @@ public sealed class FlashcardService : IFlashcardService
     public FlashcardService(
         IFlashcardRepository flashcardRepository,
         IDocumentRepository documentRepository,
+        INoteRepository noteRepository,
         IStudentFlashcardRepository studentFlashcardRepository,
         IResourceOwnershipService resourceOwnershipService,
         ISqidService sqidService,
@@ -27,6 +29,7 @@ public sealed class FlashcardService : IFlashcardService
     {
         _flashcardRepository = flashcardRepository;
         _documentRepository = documentRepository;
+        _noteRepository = noteRepository;
         _studentFlashcardRepository = studentFlashcardRepository;
         _resourceOwnershipService = resourceOwnershipService;
         _sqidService = sqidService;
@@ -84,6 +87,20 @@ public sealed class FlashcardService : IFlashcardService
         return flashcards.Select(f => f.ToResponse(_sqidService)).ToList();
     }
 
+    public async Task<IReadOnlyList<FlashcardResponse>> GetByNoteAsync(
+        string noteSqid,
+        long studentId,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureStudentIdIsValid(studentId);
+
+        long noteId = DecodeRequiredSqid(noteSqid, "NoteSqid");
+        await EnsureNoteOwnedAndExistsAsync(noteId, studentId, cancellationToken);
+
+        IReadOnlyList<Flashcard> flashcards = await _flashcardRepository.GetAllByNoteIdAndStudentIdAsync(noteId, studentId, cancellationToken);
+        return flashcards.Select(f => f.ToResponse(_sqidService)).ToList();
+    }
+
     public async Task<FlashcardResponse> CreateAsync(
         CreateFlashcardRequest request,
         long studentId,
@@ -91,18 +108,18 @@ public sealed class FlashcardService : IFlashcardService
     {
         EnsureStudentIdIsValid(studentId);
 
-        long documentId = DecodeRequiredSqid(request.DocumentSqid, "DocumentSqid");
+        long noteId = DecodeRequiredSqid(request.NoteSqid, "NoteSqid");
 
-        await EnsureDocumentOwnedAndExistsAsync(documentId, studentId, cancellationToken);
+        await EnsureNoteOwnedAndExistsAsync(noteId, studentId, cancellationToken);
 
-        Flashcard flashcard = request.ToEntity(documentId);
-        Document? targetDocument = await _documentRepository.GetTrackedByIdAsync(documentId, cancellationToken);
-        if (targetDocument is null)
+        Flashcard flashcard = request.ToEntity(noteId);
+        Note? targetNote = await _noteRepository.GetTrackedByIdAsync(noteId, cancellationToken);
+        if (targetNote is null)
         {
-            throw new ArgumentException("DocumentSqid is invalid.", nameof(request.DocumentSqid));
+            throw new ArgumentException("NoteSqid is invalid.", nameof(request.NoteSqid));
         }
 
-        targetDocument.AddFlashcard(flashcard);
+        targetNote.AddFlashcard(flashcard);
 
         Flashcard created = await _flashcardRepository.AddAsync(flashcard, cancellationToken);
         _logger.LogInformation("Created flashcard {FlashcardId}", created.FlashcardId);
@@ -110,6 +127,37 @@ public sealed class FlashcardService : IFlashcardService
         return created.ToResponse(_sqidService);
     }
 
+    public async Task<IReadOnlyList<FlashcardResponse>> CreateBulkAsync(
+        CreateBulkFlashcardsRequest request,
+        long studentId,
+        CancellationToken cancellationToken = default
+        )
+    {
+        EnsureStudentIdIsValid(studentId);
+
+        long noteId = DecodeRequiredSqid(request.Notesqid, "NoteSqid");
+
+        await EnsureNoteOwnedAndExistsAsync(noteId, studentId, cancellationToken);
+
+        Note? targetNote = await _noteRepository.GetTrackedByIdAsync(noteId, cancellationToken);
+        if (targetNote is null)
+        {
+            throw new ArgumentException("NoteSqid is invalid.", nameof(request.Notesqid));
+        }
+
+        List<Flashcard> flashcardsToCreate = request.Flashcards.Select(fc => fc.ToEntity()).ToList();
+        
+        targetNote.AddFlashcards(flashcardsToCreate);
+
+        await _flashcardRepository.AddRangeAsync(flashcardsToCreate, cancellationToken);
+        _logger.LogInformation("Created {Count} flashcards for note {NoteId}", flashcardsToCreate.Count, noteId);
+
+        return flashcardsToCreate.Select(fc => fc.ToResponse(_sqidService)).ToList();
+    }
+
+    
+
+    
     public async Task<bool> UpdateAsync(
         string flashcardSqid,
         UpdateFlashcardRequest request,
@@ -134,21 +182,21 @@ public sealed class FlashcardService : IFlashcardService
             return false;
         }
 
-        long documentId = DecodeRequiredSqid(request.DocumentSqid, "DocumentSqid");
+        long noteId = DecodeRequiredSqid(request.NoteSqid, "NoteSqid");
 
-        await EnsureDocumentOwnedAndExistsAsync(documentId, studentId, cancellationToken);
+        await EnsureNoteOwnedAndExistsAsync(noteId, studentId, cancellationToken);
 
         request.UpdateFromEntity(existing);
 
-        if (existing.DocumentId != documentId)
+        if (existing.NoteId != noteId)
         {
-            Document? targetDocument = await _documentRepository.GetTrackedByIdAsync(documentId, cancellationToken);
-            if (targetDocument is null)
+            Note? targetNote = await _noteRepository.GetTrackedByIdAsync(noteId, cancellationToken);
+            if (targetNote is null)
             {
-                throw new ArgumentException("DocumentSqid is invalid.", nameof(request.DocumentSqid));
+                throw new ArgumentException("NoteSqid is invalid.", nameof(request.NoteSqid));
             }
 
-            targetDocument.ReassignFlashcard(existing);
+            targetNote.ReassignFlashcard(existing);
         }
 
         await _flashcardRepository.UpdateAsync(existing, cancellationToken);
@@ -211,6 +259,20 @@ public sealed class FlashcardService : IFlashcardService
         }
 
         await _resourceOwnershipService.EnsureDocumentOwnedByStudentAsync(documentId, studentId, cancellationToken);
+    }
+
+    private async Task EnsureNoteOwnedAndExistsAsync(
+        long noteId,
+        long studentId,
+        CancellationToken cancellationToken)
+    {
+        Note? note = await _noteRepository.GetByIdAsync(noteId, cancellationToken);
+        if (note is null)
+        {
+            throw new ArgumentException("NoteSqid is invalid.", nameof(noteId));
+        }
+
+        await _resourceOwnershipService.EnsureNoteOwnedByStudentAsync(noteId, studentId, cancellationToken);
     }
 
     private long DecodeRequiredSqid(string sqid, string fieldName)

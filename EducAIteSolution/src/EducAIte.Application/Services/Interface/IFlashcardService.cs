@@ -11,7 +11,11 @@ public interface IFlashcardService
 
     Task<IReadOnlyList<FlashcardResponse>> GetByDocumentAsync(string documentSqid, long studentId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<FlashcardResponse>> GetByNoteAsync(string noteSqid, long studentId, CancellationToken cancellationToken = default);
+
     Task<FlashcardResponse> CreateAsync(CreateFlashcardRequest request, long studentId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<FlashcardResponse>> CreateBulkAsync(CreateBulkFlashcardsRequest request, long studentId, CancellationToken cancellationToken = default);
 
     Task<bool> UpdateAsync(string flashcardSqid, UpdateFlashcardRequest request, long studentId, CancellationToken cancellationToken = default);
 

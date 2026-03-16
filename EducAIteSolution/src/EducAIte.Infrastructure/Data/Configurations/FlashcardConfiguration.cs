@@ -35,14 +35,12 @@ public class FlashcardConfiguration : IEntityTypeConfiguration<Flashcard>
 
         builder.HasQueryFilter(f => !f.IsDeleted);
 
-        // Foreign keys
-        builder.HasOne(f => f.Document)
-            .WithMany(d => d.Flashcards)
-            .HasForeignKey(f => f.DocumentId)
+        builder.HasOne(f => f.Note)
+            .WithMany(n => n.Flashcards)
+            .HasForeignKey(f => f.NoteId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.Navigation(f => f.StudentFlashcards)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
-
     }
 }

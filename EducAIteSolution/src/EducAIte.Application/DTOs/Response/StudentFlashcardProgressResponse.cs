@@ -4,6 +4,8 @@ public record StudentFlashcardProgressResponse
 {
     public required string FlashcardSqid { get; init; } = string.Empty;
 
+    public required string NoteSqid { get; init; } = string.Empty;
+
     public required string DocumentSqid { get; init; } = string.Empty;
 
     public int CorrectCount { get; init; }
@@ -13,6 +15,8 @@ public record StudentFlashcardProgressResponse
     public int TotalAttempts { get; init; }
 
     public int ConsecutiveCorrectCount { get; init; }
+
+    public int ConsecutiveWrongCount { get; init; }
 
     public int ReviewCount { get; init; }
 

@@ -8,6 +8,8 @@ public record FlashcardResponse
 
     public required string Answer { get; init; } = string.Empty;
 
+    public required string NoteSqid { get; init; } = string.Empty;
+
     public required string DocumentSqid { get; init; } = string.Empty;
 
     public DateTime CreatedAt { get; init; }

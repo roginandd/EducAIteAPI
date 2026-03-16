@@ -16,6 +16,7 @@ public class FlashcardServiceTests
 {
     private readonly Mock<IFlashcardRepository> _flashcardRepositoryMock;
     private readonly Mock<IDocumentRepository> _documentRepositoryMock;
+    private readonly Mock<INoteRepository> _noteRepositoryMock;
     private readonly Mock<IStudentFlashcardRepository> _studentFlashcardRepositoryMock;
     private readonly Mock<IResourceOwnershipService> _resourceOwnershipServiceMock;
     private readonly Mock<ILogger<FlashcardService>> _loggerMock;
@@ -31,6 +32,7 @@ public class FlashcardServiceTests
     {
         _flashcardRepositoryMock = new Mock<IFlashcardRepository>();
         _documentRepositoryMock = new Mock<IDocumentRepository>();
+        _noteRepositoryMock = new Mock<INoteRepository>();
         _studentFlashcardRepositoryMock = new Mock<IStudentFlashcardRepository>();
         _resourceOwnershipServiceMock = new Mock<IResourceOwnershipService>();
         _loggerMock = new Mock<ILogger<FlashcardService>>();
@@ -39,6 +41,7 @@ public class FlashcardServiceTests
         _flashcardService = new FlashcardService(
             _flashcardRepositoryMock.Object,
             _documentRepositoryMock.Object,
+            _noteRepositoryMock.Object,
             _studentFlashcardRepositoryMock.Object,
             _resourceOwnershipServiceMock.Object,
             _sqidService,
@@ -73,13 +76,16 @@ public class FlashcardServiceTests
     public async Task GetByDocumentAsync_WithValidDocument_ReturnsFlashcards()
     {
         long documentId = 12;
+        long noteId = 18;
         string documentSqid = _sqidService.Encode(documentId);
-        Flashcard flashcard = new("Question", "Answer", documentId);
-        SetPrivateProperty<Flashcard, long>(flashcard, nameof(Flashcard.FlashcardId), 99L);
+        Flashcard flashcard = CreateFlashcard(99, noteId, documentId, 7);
 
         _resourceOwnershipServiceMock
             .Setup(service => service.EnsureDocumentOwnedByStudentAsync(documentId, 7, default))
             .Returns(Task.CompletedTask);
+        _documentRepositoryMock
+            .Setup(repository => repository.GetByIdAsync(documentId, default))
+            .ReturnsAsync(CreateDocument(documentId, 5, 7));
         _flashcardRepositoryMock
             .Setup(repository => repository.GetAllByDocumentIdAndStudentIdAsync(documentId, 7, default))
             .ReturnsAsync([flashcard]);
@@ -89,6 +95,7 @@ public class FlashcardServiceTests
         Assert.Single(result);
         Assert.Equal("Question", result[0].Question);
         Assert.Equal(documentSqid, result[0].DocumentSqid);
+        Assert.Equal(_sqidService.Encode(noteId), result[0].NoteSqid);
     }
 
     [Fact]
@@ -99,23 +106,27 @@ public class FlashcardServiceTests
     }
 
     [Fact]
-    public async Task CreateAsync_WithValidDocument_CreatesFlashcard()
+    public async Task CreateAsync_WithValidNote_CreatesFlashcard()
     {
         long documentId = 22;
+        long noteId = 32;
 
         CreateFlashcardRequest request = new()
         {
             Question = "What is polymorphism?",
             Answer = "Different implementations behind one contract.",
-            DocumentSqid = _sqidService.Encode(documentId)
+            NoteSqid = _sqidService.Encode(noteId)
         };
 
         _resourceOwnershipServiceMock
-            .Setup(service => service.EnsureDocumentOwnedByStudentAsync(documentId, 7, default))
+            .Setup(service => service.EnsureNoteOwnedByStudentAsync(noteId, 7, default))
             .Returns(Task.CompletedTask);
-        _documentRepositoryMock
-            .Setup(repository => repository.GetByIdAsync(documentId, default))
-            .ReturnsAsync(CreateDocument(documentId, 5, 7));
+        _noteRepositoryMock
+            .Setup(repository => repository.GetByIdAsync(noteId, default))
+            .ReturnsAsync(CreateNote(noteId, documentId, 7));
+        _noteRepositoryMock
+            .Setup(repository => repository.GetTrackedByIdAsync(noteId, default))
+            .ReturnsAsync(CreateNote(noteId, documentId, 7));
         _flashcardRepositoryMock
             .Setup(repository => repository.AddAsync(It.IsAny<Flashcard>(), default))
             .ReturnsAsync((Flashcard flashcard, CancellationToken _) =>
@@ -127,40 +138,45 @@ public class FlashcardServiceTests
         FlashcardResponse created = await _flashcardService.CreateAsync(request, 7);
 
         Assert.Equal("What is polymorphism?", created.Question);
-        Assert.Equal(request.DocumentSqid, created.DocumentSqid);
+        Assert.Equal(request.NoteSqid, created.NoteSqid);
+        Assert.Equal(_sqidService.Encode(documentId), created.DocumentSqid);
     }
 
     [Fact]
-    public async Task UpdateAsync_WithValidDocument_UpdatesFlashcard()
+    public async Task UpdateAsync_WithValidNote_UpdatesFlashcard()
     {
         long flashcardId = 31;
         long documentId = 22;
+        long noteId = 32;
 
         UpdateFlashcardRequest request = new()
         {
             Question = "Updated question",
             Answer = "Updated answer",
-            DocumentSqid = _sqidService.Encode(documentId)
+            NoteSqid = _sqidService.Encode(noteId)
         };
 
-        Flashcard existing = new("Question", "Answer", 9);
+        Flashcard existing = CreateFlashcard(flashcardId, 9, documentId, 7);
 
         _flashcardRepositoryMock
             .Setup(repository => repository.GetTrackedByIdAndStudentIdAsync(flashcardId, 7, default))
             .ReturnsAsync(existing);
         _resourceOwnershipServiceMock
-            .Setup(service => service.EnsureDocumentOwnedByStudentAsync(documentId, 7, default))
+            .Setup(service => service.EnsureNoteOwnedByStudentAsync(noteId, 7, default))
             .Returns(Task.CompletedTask);
-        _documentRepositoryMock
-            .Setup(repository => repository.GetByIdAsync(documentId, default))
-            .ReturnsAsync(CreateDocument(documentId, 5, 7));
+        _noteRepositoryMock
+            .Setup(repository => repository.GetByIdAsync(noteId, default))
+            .ReturnsAsync(CreateNote(noteId, documentId, 7));
+        _noteRepositoryMock
+            .Setup(repository => repository.GetTrackedByIdAsync(noteId, default))
+            .ReturnsAsync(CreateNote(noteId, documentId, 7));
 
         bool updated = await _flashcardService.UpdateAsync(_sqidService.Encode(flashcardId), request, 7);
 
         Assert.True(updated);
         Assert.Equal("Updated question", existing.Question);
         Assert.Equal("Updated answer", existing.Answer);
-        Assert.Equal(documentId, existing.DocumentId);
+        Assert.Equal(noteId, existing.NoteId);
         _flashcardRepositoryMock.Verify(repository => repository.UpdateAsync(existing, default), Times.Once);
     }
 
@@ -186,7 +202,7 @@ public class FlashcardServiceTests
     public async Task DeleteAsync_WithTrackedProgress_ArchivesProgressEntries()
     {
         long flashcardId = 52;
-        Flashcard flashcard = new("Question", "Answer", 9);
+        Flashcard flashcard = CreateFlashcard(flashcardId, 9, 22, 7);
         StudentFlashcard progress = new(7, flashcardId);
 
         _flashcardRepositoryMock
@@ -231,6 +247,30 @@ public class FlashcardServiceTests
 
         SetPrivateProperty<Document, long>(document, nameof(Document.DocumentId), documentId);
         return document;
+    }
+
+    private static Note CreateNote(long noteId, long documentId, long studentId)
+    {
+        Document document = CreateDocument(documentId, 5, studentId);
+        Note note = new("Linked Note", "Note content", documentId, 1m);
+        SetPrivateProperty<Note, long>(note, nameof(Note.NoteId), noteId);
+        SetPrivateProperty<Note, Document>(note, nameof(Note.Document), document);
+        return note;
+    }
+
+    private static Flashcard CreateFlashcard(
+        long flashcardId,
+        long noteId,
+        long documentId,
+        long studentId,
+        string question = "Question",
+        string answer = "Answer")
+    {
+        Note note = CreateNote(noteId, documentId, studentId);
+        Flashcard flashcard = new(question, answer, noteId);
+        SetPrivateProperty<Flashcard, long>(flashcard, nameof(Flashcard.FlashcardId), flashcardId);
+        SetPrivateProperty<Flashcard, Note>(flashcard, nameof(Flashcard.Note), note);
+        return flashcard;
     }
 
     private static void SetPrivateProperty<TTarget, TValue>(TTarget target, string propertyName, TValue value)

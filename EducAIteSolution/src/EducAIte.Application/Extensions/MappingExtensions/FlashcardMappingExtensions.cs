@@ -18,12 +18,12 @@ public static class FlashcardMappingExtensions
 
     public static Flashcard ToEntity(
         this CreateFlashcardRequest request,
-        long documentId)
+        long noteId)
     {
         return new Flashcard(
             request.Question,
             request.Answer,
-            documentId);
+            noteId);
     }
 
     public static void UpdateFromEntity(
@@ -31,5 +31,12 @@ public static class FlashcardMappingExtensions
         Flashcard flashcard)
     {
         flashcard.UpdateContent(request.Question, request.Answer);
+    }
+
+    public static Flashcard ToEntity(
+        this CreateBulkFlashcardItem item
+    )
+    {
+        return item.Adapt<Flashcard>();
     }
 }

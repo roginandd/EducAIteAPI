@@ -118,6 +118,29 @@ public class FlashcardController : ControllerBase
         }
     }
 
+    [HttpGet("note/{noteSqid}")]
+    public async Task<IActionResult> GetByNote(string noteSqid, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentStudentId(out long studentId))
+        {
+            return Unauthorized(new { message = "Student ID claim is missing or invalid." });
+        }
+
+        try
+        {
+            IReadOnlyList<FlashcardResponse> flashcards = await _flashcardService.GetByNoteAsync(noteSqid, studentId, cancellationToken);
+            return Ok(flashcards);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+        }
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateFlashcardRequest request, CancellationToken cancellationToken)
     {

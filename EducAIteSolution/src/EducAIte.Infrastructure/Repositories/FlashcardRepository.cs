@@ -18,6 +18,8 @@ public sealed class FlashcardRepository : IFlashcardRepository
     {
         return await _context.Flashcards
             .AsNoTracking()
+            .Include(f => f.Note)
+            .ThenInclude(n => n.Document)
             .FirstOrDefaultAsync(f => f.FlashcardId == flashcardId, cancellationToken);
     }
 
@@ -33,17 +35,21 @@ public sealed class FlashcardRepository : IFlashcardRepository
         return await _context.Flashcards
             .AsNoTracking()
             .Where(f => f.FlashcardId == flashcardId)
-            .Where(f => f.Document.Folder.StudentId == studentId)
-            .Where(f => !f.Document.Folder.IsDeleted && !f.Document.FileMetadata.IsDeleted)
+            .Include(f => f.Note)
+            .ThenInclude(n => n.Document)
+            .Where(f => f.Note.Document.Folder.StudentId == studentId)
+            .Where(f => !f.Note.Document.Folder.IsDeleted && !f.Note.Document.FileMetadata.IsDeleted)
             .FirstOrDefaultAsync(cancellationToken);
     }
 
     public async Task<Flashcard?> GetTrackedByIdAndStudentIdAsync(long flashcardId, long studentId, CancellationToken cancellationToken = default)
     {
         return await _context.Flashcards
+            .Include(f => f.Note)
+            .ThenInclude(n => n.Document)
             .Where(f => f.FlashcardId == flashcardId)
-            .Where(f => f.Document.Folder.StudentId == studentId)
-            .Where(f => !f.Document.Folder.IsDeleted && !f.Document.FileMetadata.IsDeleted)
+            .Where(f => f.Note.Document.Folder.StudentId == studentId)
+            .Where(f => !f.Note.Document.Folder.IsDeleted && !f.Note.Document.FileMetadata.IsDeleted)
             .FirstOrDefaultAsync(cancellationToken);
     }
 
@@ -51,8 +57,10 @@ public sealed class FlashcardRepository : IFlashcardRepository
     {
         return await _context.Flashcards
             .AsNoTracking()
-            .Where(f => f.Document.Folder.StudentId == studentId)
-            .Where(f => !f.Document.Folder.IsDeleted && !f.Document.FileMetadata.IsDeleted)
+            .Include(f => f.Note)
+            .ThenInclude(n => n.Document)
+            .Where(f => f.Note.Document.Folder.StudentId == studentId)
+            .Where(f => !f.Note.Document.Folder.IsDeleted && !f.Note.Document.FileMetadata.IsDeleted)
             .OrderByDescending(f => f.UpdatedAt)
             .ToListAsync(cancellationToken);
     }
@@ -61,9 +69,24 @@ public sealed class FlashcardRepository : IFlashcardRepository
     {
         return await _context.Flashcards
             .AsNoTracking()
-            .Where(f => f.DocumentId == documentId)
-            .Where(f => f.Document.Folder.StudentId == studentId)
-            .Where(f => !f.Document.Folder.IsDeleted && !f.Document.FileMetadata.IsDeleted)
+            .Include(f => f.Note)
+            .ThenInclude(n => n.Document)
+            .Where(f => f.Note.DocumentId == documentId)
+            .Where(f => f.Note.Document.Folder.StudentId == studentId)
+            .Where(f => !f.Note.Document.Folder.IsDeleted && !f.Note.Document.FileMetadata.IsDeleted)
+            .OrderByDescending(f => f.UpdatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<Flashcard>> GetAllByNoteIdAndStudentIdAsync(long noteId, long studentId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Flashcards
+            .AsNoTracking()
+            .Include(f => f.Note)
+            .ThenInclude(n => n.Document)
+            .Where(f => f.NoteId == noteId)
+            .Where(f => f.Note.Document.Folder.StudentId == studentId)
+            .Where(f => !f.Note.Document.Folder.IsDeleted && !f.Note.Document.FileMetadata.IsDeleted)
             .OrderByDescending(f => f.UpdatedAt)
             .ToListAsync(cancellationToken);
     }
@@ -76,8 +99,10 @@ public sealed class FlashcardRepository : IFlashcardRepository
     {
         IQueryable<Flashcard> query = _context.Flashcards
             .AsNoTracking()
-            .Where(f => f.Document.Folder.StudentId == studentId)
-            .Where(f => !f.Document.Folder.IsDeleted && !f.Document.FileMetadata.IsDeleted)
+            .Include(f => f.Note)
+            .ThenInclude(n => n.Document)
+            .Where(f => f.Note.Document.Folder.StudentId == studentId)
+            .Where(f => !f.Note.Document.Folder.IsDeleted && !f.Note.Document.FileMetadata.IsDeleted)
             .Where(f => !_context.StudentFlashcards
                 .IgnoreQueryFilters()
                 .Any(sf => sf.StudentId == studentId && sf.FlashcardId == f.FlashcardId));
@@ -98,6 +123,12 @@ public sealed class FlashcardRepository : IFlashcardRepository
         _context.Flashcards.Add(flashcard);
         await _context.SaveChangesAsync(cancellationToken);
         return flashcard;
+    }
+
+    public async Task AddRangeAsync(IEnumerable<Flashcard> flashcards, CancellationToken cancellationToken = default)
+    {
+        _context.Flashcards.AddRange(flashcards);
+        await _context.SaveChangesAsync(cancellationToken);
     }
 
     public async Task UpdateAsync(Flashcard flashcard, CancellationToken cancellationToken = default)

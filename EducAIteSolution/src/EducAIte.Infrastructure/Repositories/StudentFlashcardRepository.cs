@@ -19,9 +19,11 @@ public sealed class StudentFlashcardRepository : IStudentFlashcardRepository
         return await _context.StudentFlashcards
             .AsNoTracking()
             .Include(studentFlashcard => studentFlashcard.Flashcard)
+            .ThenInclude(flashcard => flashcard.Note)
+            .ThenInclude(note => note.Document)
             .Where(studentFlashcard => studentFlashcard.StudentId == studentId)
             .Where(studentFlashcard => studentFlashcard.FlashcardId == flashcardId)
-            .Where(studentFlashcard => !studentFlashcard.Flashcard.Document.Folder.IsDeleted && !studentFlashcard.Flashcard.Document.FileMetadata.IsDeleted)
+            .Where(studentFlashcard => !studentFlashcard.Flashcard.Note.Document.Folder.IsDeleted && !studentFlashcard.Flashcard.Note.Document.FileMetadata.IsDeleted)
             .FirstOrDefaultAsync(cancellationToken);
     }
 
@@ -29,9 +31,11 @@ public sealed class StudentFlashcardRepository : IStudentFlashcardRepository
     {
         return await _context.StudentFlashcards
             .Include(studentFlashcard => studentFlashcard.Flashcard)
+            .ThenInclude(flashcard => flashcard.Note)
+            .ThenInclude(note => note.Document)
             .Where(studentFlashcard => studentFlashcard.StudentId == studentId)
             .Where(studentFlashcard => studentFlashcard.FlashcardId == flashcardId)
-            .Where(studentFlashcard => !studentFlashcard.Flashcard.Document.Folder.IsDeleted && !studentFlashcard.Flashcard.Document.FileMetadata.IsDeleted)
+            .Where(studentFlashcard => !studentFlashcard.Flashcard.Note.Document.Folder.IsDeleted && !studentFlashcard.Flashcard.Note.Document.FileMetadata.IsDeleted)
             .FirstOrDefaultAsync(cancellationToken);
     }
 
@@ -40,6 +44,8 @@ public sealed class StudentFlashcardRepository : IStudentFlashcardRepository
         return await _context.StudentFlashcards
             .IgnoreQueryFilters()
             .Include(studentFlashcard => studentFlashcard.Flashcard)
+            .ThenInclude(flashcard => flashcard.Note)
+            .ThenInclude(note => note.Document)
             .Where(studentFlashcard => studentFlashcard.StudentId == studentId)
             .Where(studentFlashcard => studentFlashcard.FlashcardId == flashcardId)
             .FirstOrDefaultAsync(cancellationToken);
@@ -50,8 +56,10 @@ public sealed class StudentFlashcardRepository : IStudentFlashcardRepository
         return await _context.StudentFlashcards
             .AsNoTracking()
             .Include(studentFlashcard => studentFlashcard.Flashcard)
+            .ThenInclude(flashcard => flashcard.Note)
+            .ThenInclude(note => note.Document)
             .Where(studentFlashcard => studentFlashcard.StudentId == studentId)
-            .Where(studentFlashcard => !studentFlashcard.Flashcard.Document.Folder.IsDeleted && !studentFlashcard.Flashcard.Document.FileMetadata.IsDeleted)
+            .Where(studentFlashcard => !studentFlashcard.Flashcard.Note.Document.Folder.IsDeleted && !studentFlashcard.Flashcard.Note.Document.FileMetadata.IsDeleted)
             .OrderBy(studentFlashcard => studentFlashcard.NextReviewAt)
             .ThenByDescending(studentFlashcard => studentFlashcard.LapseCount)
             .ThenBy(studentFlashcard => studentFlashcard.FlashcardId)
@@ -68,9 +76,13 @@ public sealed class StudentFlashcardRepository : IStudentFlashcardRepository
         IQueryable<StudentFlashcard> query = _context.StudentFlashcards
             .AsNoTracking()
             .Include(studentFlashcard => studentFlashcard.Flashcard)
+            .ThenInclude(flashcard => flashcard.Note)
+            .ThenInclude(note => note.Document)
             .Where(studentFlashcard => studentFlashcard.StudentId == studentId)
             .Where(studentFlashcard => studentFlashcard.NextReviewAt <= now)
-            .Where(studentFlashcard => !studentFlashcard.Flashcard.Document.Folder.IsDeleted && !studentFlashcard.Flashcard.Document.FileMetadata.IsDeleted);
+            .Where(studentFlashcard => !studentFlashcard.Flashcard.Note.Document.Folder.IsDeleted && !studentFlashcard.Flashcard.Note.Document.FileMetadata.IsDeleted)
+            .OrderByDescending(studentFlashCard => studentFlashCard.ConsecutiveWrongCount)
+            .ThenByDescending(studentFlashcard => studentFlashcard.WrongCount);
 
         if (excludeFlashcardIds.Count > 0)
         {

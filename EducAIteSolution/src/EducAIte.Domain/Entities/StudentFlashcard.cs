@@ -22,6 +22,8 @@ public class StudentFlashcard
     public DateTime? LastReviewedAt { get; private set; }
     public DateTime NextReviewAt { get; private set; }
     public int ConsecutiveCorrectCount { get; private set; }
+
+    public int ConsecutiveWrongCount {get; private set; }
     public int ReviewCount { get; private set; }
     public int LapseCount { get; private set; }
     public FlashcardReviewState State { get; private set; }
@@ -40,6 +42,7 @@ public class StudentFlashcard
         StudentId = ValidatePositiveId(studentId, nameof(studentId));
         FlashcardId = ValidatePositiveId(flashcardId, nameof(flashcardId));
         CorrectCount = 0;
+        ConsecutiveCorrectCount = 0;
         WrongCount = 0;
         NextReviewAt = now;
         State = FlashcardReviewState.New;
@@ -89,6 +92,7 @@ public class StudentFlashcard
         CorrectCount += 1;
         ReviewCount += 1;
         ConsecutiveCorrectCount += 1;
+        ConsecutiveWrongCount = 0;
         LastReviewedAt = reviewTime;
         LastReviewOutcome = FlashcardReviewOutcome.Correct;
         State = DetermineStateAfterCorrect();
@@ -105,6 +109,7 @@ public class StudentFlashcard
         ReviewCount += 1;
         LapseCount += 1;
         ConsecutiveCorrectCount = 0;
+        ConsecutiveWrongCount += 1;
         LastReviewedAt = reviewTime;
         LastReviewOutcome = FlashcardReviewOutcome.Wrong;
         State = State == FlashcardReviewState.Review ? FlashcardReviewState.Relearning : FlashcardReviewState.Learning;
@@ -132,6 +137,7 @@ public class StudentFlashcard
         LastReviewedAt = null;
         NextReviewAt = reviewTime;
         ConsecutiveCorrectCount = 0;
+        ConsecutiveWrongCount = 0;
         ReviewCount = 0;
         LapseCount = 0;
         State = FlashcardReviewState.New;
