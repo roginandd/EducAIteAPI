@@ -16,7 +16,7 @@ public interface INoteRepository
 
     Task<Note?> GetLastByDocumentIdAsync(long documentId, CancellationToken cancellationToken = default);
 
-    Task<Note> AddAsync(Note note, CancellationToken cancellationToken = default);
+    Task AddAsync(Note note, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(Note note, CancellationToken cancellationToken = default);
 
@@ -26,7 +26,7 @@ public interface INoteRepository
 
     Task<Note?> GetTrackedByIdAndDocumentIdAsync(long noteId, long documentId, CancellationToken cancellationToken = default);
 
-    Task<bool> SoftDeleteByIdAsync(long noteId, CancellationToken cancellationToken = default);
+    Task DeleteAsync(long noteId, CancellationToken cancellationToken = default);
 
     Task RebalanceDocumentAsync(long documentId, decimal step, CancellationToken cancellationToken = default);
 }

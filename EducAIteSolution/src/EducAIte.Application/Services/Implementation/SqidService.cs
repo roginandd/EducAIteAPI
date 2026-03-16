@@ -34,6 +34,12 @@ public sealed class SqidService : ISqidService
             return false;
         }
 
+        string canonicalSqid = _sqids.Encode(values[0]);
+        if (!string.Equals(canonicalSqid, sqid, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
         id = values[0];
         return true;
     }
