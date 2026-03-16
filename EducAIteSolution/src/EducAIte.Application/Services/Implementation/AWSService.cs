@@ -23,44 +23,22 @@ public class AWSService(
     public Task<string> UploadNoteContextAsync(UploadNoteContextRequest uploadNoteContextRequest, CancellationToken cancellationToken)
     {
         var extension = Path.GetExtension(uploadNoteContextRequest.File.FileName);
-        var key = $"users/{uploadNoteContextRequest.UserSqid}/notes/{uploadNoteContextRequest.NoteSqid}/context/{new Guid()}_{extension}";
+        var key = $"students/{uploadNoteContextRequest.UserSqid}/notes/{uploadNoteContextRequest.NoteSqid}/context/{new Guid()}_{extension}";
         return UploadFileAsync(uploadNoteContextRequest.File, key, cancellationToken);
     }
 
     public Task<string> UploadNoteImages(UploadNoteImagesRequest uploadNoteImagesRequest, CancellationToken cancellationToken)
     {
         var extension = Path.GetExtension(uploadNoteImagesRequest.File.FileName);
-        var key = $"users/{uploadNoteImagesRequest.UserSqid}/notes/{uploadNoteImagesRequest.NoteSqid}/images/{new Guid()}_{extension}";
+        var key = $"students/{uploadNoteImagesRequest.UserSqid}/notes/{uploadNoteImagesRequest.NoteSqid}/images/{new Guid()}_{extension}";
         return UploadFileAsync(uploadNoteImagesRequest.File, key, cancellationToken);
     }
 
     public Task<string> UploadStudyLoad(StudyLoadCreateRequest studyLoadCreateRequest, CancellationToken cancellationToken)
     {
         var extension = Path.GetExtension(studyLoadCreateRequest.StudyLoadDocument.FileName);
-        var key = $"users/{studyLoadCreateRequest.StudentSqid}/study-loads/{studyLoadCreateRequest.SchoolYearStart}-{studyLoadCreateRequest.SchoolYearEnd}_{studyLoadCreateRequest.SchoolYearEnd}/{studyLoadCreateRequest.Semester}/{new Guid()}_{extension}";
+        var key = $"students/{studyLoadCreateRequest.StudentSqid}/study-loads/{studyLoadCreateRequest.SchoolYearStart}-{studyLoadCreateRequest.SchoolYearEnd}/{studyLoadCreateRequest.Semester}/{new Guid()}_{extension}";
         return UploadFileAsync(studyLoadCreateRequest.StudyLoadDocument, key, cancellationToken);
-    }
-
-    private async Task<string> UploadFileAsync(IFormFile file, string path, CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        var key = path;
-
-        using (var stream = file.OpenReadStream())
-        {
-            var request = new PutObjectRequest
-            {
-                BucketName = _bucketName,
-                Key = key,
-                InputStream = stream,
-                ContentType = file.ContentType
-            };
-
-            await _s3Client.PutObjectAsync(request, cancellationToken);
-        }
-
-        return key;
     }
 
     public string GenerateSignedUrl(string key, TimeSpan validFor, CancellationToken cancellationToken)
@@ -96,5 +74,29 @@ public class AWSService(
     public string GenerateStudyLoadSignedUrl(string key, TimeSpan validFor, CancellationToken cancellationToken)
     {
         return GenerateSignedUrl(key, validFor, cancellationToken);
+    }
+
+    //helper method to upload file to S3
+
+    private async Task<string> UploadFileAsync(IFormFile file, string path, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var key = path;
+
+        using (var stream = file.OpenReadStream())
+        {
+            var request = new PutObjectRequest
+            {
+                BucketName = _bucketName,
+                Key = key,
+                InputStream = stream,
+                ContentType = file.ContentType
+            };
+
+            await _s3Client.PutObjectAsync(request, cancellationToken);
+        }
+
+        return key;
     }
 }

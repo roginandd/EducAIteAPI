@@ -26,6 +26,10 @@ public class StudyLoadConfiguration : IEntityTypeConfiguration<StudyLoad>
         builder.Property(sl => sl.IsDeleted)
             .IsRequired()
             .HasDefaultValue(false);
+        
+        builder.Property(sl => sl.Semester)
+            .HasConversion<int>()
+            .IsRequired();
 
         // Configure SchoolYear as owned entity
         builder.OwnsOne(sl => sl.SchoolYear, sy =>
@@ -34,9 +38,6 @@ public class StudyLoadConfiguration : IEntityTypeConfiguration<StudyLoad>
             sy.Property(s => s.EndYear).HasColumnName("SchoolYearEnd").IsRequired();
         });
 
-        builder.Property(sl => sl.Semester)
-            .HasConversion<int>()
-            .IsRequired();
 
         // Relationships
         builder.HasOne(sl => sl.Student)

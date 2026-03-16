@@ -18,14 +18,12 @@ public class StudyLoadRepository(ApplicationDbContext dbContext) : IStudyLoadRep
     public async Task<StudyLoad> AddStudyLoadAsync(StudyLoad studyLoad, CancellationToken cancellationToken = default)
     {
         _dbContext.StudyLoads.Add(studyLoad);
-        await _dbContext.SaveChangesAsync(cancellationToken);
         return studyLoad;
     }
 
     public async Task<StudyLoad> UpdateStudyLoadAsync(StudyLoad studyLoad, CancellationToken cancellationToken = default)
     {
         _dbContext.StudyLoads.Update(studyLoad);
-        await _dbContext.SaveChangesAsync(cancellationToken);
         return studyLoad;
     }
 
@@ -35,7 +33,6 @@ public class StudyLoadRepository(ApplicationDbContext dbContext) : IStudyLoadRep
         if (studyLoad == null) return false;
 
         _dbContext.StudyLoads.Remove(studyLoad);
-        await _dbContext.SaveChangesAsync(cancellationToken);
         return true;
     }
 }
