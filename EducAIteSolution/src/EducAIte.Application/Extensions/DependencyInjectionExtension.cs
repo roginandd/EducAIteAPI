@@ -12,7 +12,7 @@ namespace EducAIte.Application.Extensions;
   {
       public static IServiceCollection AddApplicationLayer(this IServiceCollection services)
       {
-          ConfigureMapster();
+        ConfigureMapster();
 
         // Business Logic and Application Services
         services.AddScoped<IAuthService, AuthService>();
@@ -26,10 +26,12 @@ namespace EducAIte.Application.Extensions;
         services.AddScoped<IStudentCourseService, StudentCourseService>();
         services.AddScoped<IStudentFlashcardService, StudentFlashcardService>();
         services.AddScoped<IStudentService, StudentService>();
+        services.AddScoped<IStudyLoadService, StudyLoadService>();
 
         // Repositories
         services.AddScoped<IStudentRepository, StudentRepository>();
         services.AddScoped<ICourseRepository, CourseRepository>();
+        services.AddScoped<IStudyLoadRepository, StudyLoadRepository>();
         services.AddScoped<IDocumentRepository, DocumentRepository>();
         services.AddScoped<IFlashcardRepository, FlashcardRepository>();
         services.AddScoped<INoteRepository, NoteRepository>();

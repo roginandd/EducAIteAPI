@@ -1,19 +1,14 @@
-using EducAIte.Domain.Entities;
-
 namespace EducAIte.Domain.Interfaces;
 
-/// <summary>
-/// Provides read access to study load ownership data needed by application services.
-/// </summary>
+using EducAIte.Domain.Entities;
+
 public interface IStudyLoadRepository
 {
-    /// <summary>
-    /// Retrieves an active study load by its identifier.
-    /// </summary>
-    Task<StudyLoad?> GetByIdAsync(long studyLoadId, CancellationToken cancellationToken = default);
+    public Task<StudyLoad?> GetByStudentIdAsync(long studentId, CancellationToken cancellationToken = default);
+    public Task<StudyLoad> AddStudyLoadAsync(StudyLoad studyLoad, CancellationToken cancellationToken = default);
+    public Task<StudyLoad> UpdateStudyLoadAsync(StudyLoad studyLoad, CancellationToken cancellationToken = default);
 
-    /// <summary>
-    /// Retrieves an active study load owned by a specific student.
-    /// </summary>
-    Task<StudyLoad?> GetByIdAndStudentIdAsync(long studyLoadId, long studentId, CancellationToken cancellationToken = default);
+        Task<StudyLoad?> GetByIdAndStudentIdAsync(long studyLoadId, long studentId, CancellationToken cancellationToken = default);
+
+    public Task<bool> DeleteStudyLoadAsync(long id, CancellationToken cancellationToken = default);
 }
