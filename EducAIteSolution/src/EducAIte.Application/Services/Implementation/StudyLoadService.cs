@@ -72,12 +72,25 @@ public class StudyLoadService(
         throw new NotImplementedException();
     }
 
-    public Task<IEnumerable<StudyLoadDto>> GetAllStudyLoadsByStudentIdAsync(string studentSqid, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<StudyLoadDto>> GetAllStudyLoadsByStudentIdAsync(string studentSqid, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        _sqidService.TryDecode(studentSqid, out var studentId);
+
+        return await _studyLoadRepository.GetAllStudyLoadsByStudentIdAsync(studentId,cancellationToken)
+            .ContinueWith(studyLoadsTask =>
+            {
+                if (studyLoadsTask.IsFaulted)
+                {
+                    _logger.LogError(studyLoadsTask.Exception, "Error retrieving study loads for student {StudentId}", studentId);
+                    throw studyLoadsTask.Exception ?? new Exception("Unknown error occurred while retrieving study loads.");
+                }
+
+                IEnumerable<StudyLoad> studyLoads = studyLoadsTask.Result;
+                return studyLoads.Select(studyLoad => studyLoad.ToDto(_sqidService));
+            }, cancellationToken);
     }
 
-    public Task<StudyLoadDto?> GetStudyLoadByIdAsync(string studyLoadSqid, CancellationToken cancellationToken = default)
+    public async  Task<StudyLoadDto?> GetStudyLoadByIdAsync(string studyLoadSqid, CancellationToken cancellationToken = default)
     {
         throw new NotImplementedException();
     }
