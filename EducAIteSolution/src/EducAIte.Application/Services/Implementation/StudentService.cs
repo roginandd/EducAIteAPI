@@ -10,11 +10,13 @@ namespace EducAIte.Application.Services.Implementation;
 public class StudentService : IStudentService
 {
     private readonly IStudentRepository _studentRepository;
+    private readonly ISqidService _sqidService;
     private readonly ILogger<StudentService> _logger;
 
-    public StudentService(IStudentRepository studentRepository, ILogger<StudentService> logger)
+    public StudentService(IStudentRepository studentRepository, ISqidService sqidService, ILogger<StudentService> logger)
     {
         _studentRepository = studentRepository;
+        _sqidService = sqidService;
         _logger = logger;
     }
 
@@ -42,10 +44,20 @@ public class StudentService : IStudentService
         var createdStudent = await _studentRepository.AddStudentAsync(student);
         _logger.LogInformation("Student registered successfully with StudentIdNumber {StudentIdNumber}.", createdStudent.StudentIdNumber);
 
-        return createdStudent.ToDTO();
+        return createdStudent.ToDTO(_sqidService);
     }
 
-    public async Task<StudentResponse> GetStudentByIdAsync(long studentId)
+    public async Task<StudentResponse> GetStudentBySqidAsync(string studentSqid)
+    {
+        if (!_sqidService.TryDecode(studentSqid, out long studentId))
+        {
+            throw new KeyNotFoundException($"Student with sqid {studentSqid} not found.");
+        }
+
+        return await GetCurrentStudentAsync(studentId);
+    }
+
+    public async Task<StudentResponse> GetCurrentStudentAsync(long studentId)
     {
         var student = await _studentRepository.GetByStudentIdAsync(studentId);
         if (student is null)
@@ -53,6 +65,6 @@ public class StudentService : IStudentService
             throw new KeyNotFoundException($"Student with ID {studentId} not found.");
         }
 
-        return student.ToDTO();
+        return student.ToDTO(_sqidService);
     }
 }

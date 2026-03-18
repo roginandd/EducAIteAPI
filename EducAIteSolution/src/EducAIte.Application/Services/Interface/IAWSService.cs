@@ -1,7 +1,17 @@
-namespace EducAIte.Application.Services.Interface;
+using EducAIte.Application.DTOs.Request;
+using Microsoft.AspNetCore.Http;
 
-public interface IAWSService
+namespace EducAIte.Application.Services.Interface
 {
-    Task<string> UploadFileAsync(IFormFile file, CancellationToken cancellationToken);
-    string GenerateSignedUrl(string key, TimeSpan validFor, CancellationToken cancellationToken);
+    public interface IAWSService
+    {
+        Task<string> UploadFileAsync(IFormFile file, string path, CancellationToken cancellationToken);
+        Task<string> UploadNoteContextAsync(UploadNoteContextRequest uploadNoteContextRequest, CancellationToken cancellationToken);
+        Task<string> UploadNoteImages(UploadNoteImagesRequest uploadNoteImagesRequest, CancellationToken cancellationToken);
+        Task<string> UploadStudyLoad(StudyLoadCreateRequest studyLoadCreateRequest, CancellationToken cancellationToken);
+        string GenerateNoteContextSignedUrl(string key, TimeSpan validFor, CancellationToken cancellationToken);
+        string GenerateNoteImageSignedUrl(string key, TimeSpan validFor, CancellationToken cancellationToken);
+        string GenerateStudyLoadSignedUrl(string key, TimeSpan validFor, CancellationToken cancellationToken);
+        string GenerateSignedUrl(string key, TimeSpan validFor, CancellationToken cancellationToken);
+    }
 }

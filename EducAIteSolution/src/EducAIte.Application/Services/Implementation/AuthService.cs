@@ -8,6 +8,7 @@ using EducAIte.Application.DTOs.Response;
 using EducAIte.Application.Extensions;
 using EducAIte.Application.Extensions.MappingExtensions;
 using EducAIte.Application.Interfaces;
+using EducAIte.Application.Services.Interface;
 using EducAIte.Domain.Entities;
 using EducAIte.Domain.Interfaces;
 using Mapster;
@@ -22,12 +23,14 @@ public class AuthService : IAuthService
     // injection of configuration to access JWT credentials
     private readonly IConfiguration _configuration;
     private readonly IStudentRepository _studentRepository;
+    private readonly ISqidService _sqidService;
     private readonly ILogger<AuthService> _logger;
 
-    public AuthService(IConfiguration configuration, IStudentRepository studentRepository, ILogger<AuthService> logger)
+    public AuthService(IConfiguration configuration, IStudentRepository studentRepository, ISqidService sqidService, ILogger<AuthService> logger)
     {
         _configuration = configuration;
         _studentRepository = studentRepository;
+        _sqidService = sqidService;
         _logger = logger;
     }
 
@@ -129,7 +132,7 @@ public class AuthService : IAuthService
 
         _logger.LogInformation("Profile retrieved for student ID {StudentId}", studentIdNumber);
 
-        return student.ToStudentProfile();
+        return student.ToStudentProfile(_sqidService);
     }
         
 }

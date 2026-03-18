@@ -26,13 +26,23 @@ public class StudyLoadConfiguration : IEntityTypeConfiguration<StudyLoad>
         builder.Property(sl => sl.IsDeleted)
             .IsRequired()
             .HasDefaultValue(false);
+        
+        builder.Property(sl => sl.Semester)
+            .HasConversion<int>()
+            .IsRequired();
 
-        // Configure SchoolYear as owned entity
-        builder.OwnsOne(sl => sl.SchoolYear, sy =>
-        {
-            sy.Property(s => s.StartYear).HasColumnName("SchoolYearStart").IsRequired();
-            sy.Property(s => s.EndYear).HasColumnName("SchoolYearEnd").IsRequired();
-        });
+        builder.Property<int>("SchoolYearStart")
+            .HasColumnName("SchoolYearStart")
+            .IsRequired();
+
+        builder.Property<int>("SchoolYearEnd")
+            .HasColumnName("SchoolYearEnd")
+            .IsRequired();
+
+        // Now this works — all columns are on the same flat type
+        builder.HasIndex(sl => new { sl.StudentId, sl.SchoolYearStart, sl.SchoolYearEnd, sl.Semester })
+            .IsUnique()
+            .HasDatabaseName("IX_StudyLoads_StudentSchoolYearSemesterUnique");        
 
         // Relationships
         builder.HasOne(sl => sl.Student)
@@ -47,5 +57,7 @@ public class StudyLoadConfiguration : IEntityTypeConfiguration<StudyLoad>
 
         builder.HasIndex(sl => sl.StudentId);
         builder.HasIndex(sl => sl.FileMetadataId);
+        
+        
     }
 }
