@@ -6,12 +6,12 @@ namespace EducAIte.Application.DTOs.Request;
 public record CreateStudentCourseRequest
 {
     /// <summary>
-    /// Gets the course identifier to enroll in.
+    /// Gets the sqid representation of the course identifier to enroll in.
     /// </summary>
-    public required long CourseId { get; init; }
+    public required string CourseSqid { get; init; } = string.Empty;
 
     /// <summary>
-    /// Gets the study load identifier that will own the enrollment.
+    /// Gets the sqid representation of the study load identifier that will own the enrollment.
     /// </summary>
-    public required long StudyLoadId { get; init; }
+    public required string StudyLoadSqid { get; init; } = string.Empty;
 }
