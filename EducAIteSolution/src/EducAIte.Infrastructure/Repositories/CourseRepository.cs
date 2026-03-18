@@ -1,6 +1,7 @@
 using EducAIte.Domain.Entities;
 using EducAIte.Domain.Interfaces;
 using EducAIte.Infrastructure.Data;
+using EducAIte.Infrastructure.CustomQueries;
 using Microsoft.EntityFrameworkCore;
 
 namespace EducAIte.Infrastructure.Repositories;
@@ -47,6 +48,50 @@ public class CourseRepository : ICourseRepository
         return course;
     }
 
+    public async Task<IReadOnlySet<string>> GetExistingEdpCodesAsync(
+        IReadOnlyCollection<string> edpCodes,
+        CancellationToken cancellationToken = default)
+    {
+        if (edpCodes.Count == 0)
+        {
+            return new HashSet<string>(StringComparer.Ordinal);
+        }
+
+        const int batchSize = 1000;
+        HashSet<string> existingEdpCodes = new(StringComparer.Ordinal);
+
+        foreach (string[] batch in edpCodes.Chunk(batchSize))
+        {
+            List<string> existingBatch = await _dbContext.Courses
+                .Where(course => !course.IsDeleted && batch.Contains(course.EDPCode))
+                .Select(course => course.EDPCode)
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+
+            existingEdpCodes.UnionWith(existingBatch);
+        }
+
+        return existingEdpCodes;
+    }
+
+    public async Task<int> InsertMissingCoursesAsync(IReadOnlyList<Course> courses, CancellationToken cancellationToken = default)
+    {
+        if (courses.Count == 0)
+        {
+            return 0;
+        }
+
+        const int batchSize = 1000;
+        int insertedCount = 0;
+
+        foreach (Course[] batch in courses.Chunk(batchSize))
+        {
+            insertedCount += await ExecuteInsertBatchAsync(batch, cancellationToken);
+        }
+
+        return insertedCount;
+    }
+
     public async Task UpdateAsync(long id, Course course, CancellationToken cancellationToken = default)
     {
         Course? existingCourse = await _dbContext.Courses.FirstOrDefaultAsync(c => c.CourseId == id && !c.IsDeleted, cancellationToken);
@@ -76,5 +121,11 @@ public class CourseRepository : ICourseRepository
         course.UpdatedAt = DateTime.UtcNow;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<int> ExecuteInsertBatchAsync(IReadOnlyList<Course> batch, CancellationToken cancellationToken)
+    {
+        (string sql, Npgsql.NpgsqlParameter[] parameters) = CourseCustomQueries.BuildInsertMissingCourses(batch);
+        return await _dbContext.Database.ExecuteSqlRawAsync(sql, parameters, cancellationToken);
     }
 }

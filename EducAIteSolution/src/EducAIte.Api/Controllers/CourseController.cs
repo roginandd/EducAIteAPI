@@ -50,6 +50,13 @@ public class CourseController : ControllerBase
         }
     }
 
+    [HttpPost("bulk")]
+    public async Task<IActionResult> CreateBulk([FromBody] CreateBulkCoursesRequest request, CancellationToken cancellationToken)
+    {
+        var result = await _courseService.CreateCoursesBulkAsync(request, cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPut("{id:long}")]
     public async Task<IActionResult> Update(long id, [FromBody] UpdateCourseRequest request)
     {

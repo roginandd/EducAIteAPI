@@ -40,6 +40,24 @@ public interface ICourseRepository
     Task<Course> AddAsync(Course course, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Retrieves the subset of EDP codes that already exist in the database.
+    /// </summary>
+    /// <param name="edpCodes">The EDP codes to check.</param>
+    /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+    /// <returns>The existing EDP codes.</returns>
+    Task<IReadOnlySet<string>> GetExistingEdpCodesAsync(
+        IReadOnlyCollection<string> edpCodes,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Persists only the course rows whose EDP codes are missing from the database.
+    /// </summary>
+    /// <param name="courses">The course entities to insert.</param>
+    /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+    /// <returns>The number of rows inserted.</returns>
+    Task<int> InsertMissingCoursesAsync(IReadOnlyList<Course> courses, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Updates the attributes of an existing course entity.
     /// </summary>
     /// <param name="course">The course entity containing updated values.</param>

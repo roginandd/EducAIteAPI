@@ -30,6 +30,14 @@ public interface ICourseService
     Task<CourseResponse> CreateCourseAsync(CreateCourseRequest request);
 
     /// <summary>
+    /// Inserts only the missing course rows from a batch request.
+    /// </summary>
+    /// <param name="request">The bulk course request.</param>
+    /// <param name="cancellationToken">Token to monitor for cancellation requests.</param>
+    /// <returns>A summary of inserted rows and skipped input records.</returns>
+    Task<BulkCreateCoursesResponse> CreateCoursesBulkAsync(CreateBulkCoursesRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Updates an existing course record after performing validation.
     /// </summary>
     /// <param name="id">The surrogate key of the course to update.</param>
