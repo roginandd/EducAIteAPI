@@ -18,7 +18,8 @@ public class StudyLoad
     public FileMetadata FileMetadata { get; set; } = null!;
 
     // Properties
-    public required SchoolYear SchoolYear{ get; set; }
+    public required int SchoolYearStart { get; set; }
+    public required int SchoolYearEnd { get; set; }
     public required Semester Semester { get; set; }
     public ICollection<Course> Courses{ get; set; } = new HashSet<Course>();
 

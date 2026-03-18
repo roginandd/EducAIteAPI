@@ -28,18 +28,22 @@ public record StudyLoadCreateRequest
 /// </summary>
 public record StudyLoadUpdateRequest
 {
+    public required string StudentSqid { get; init; }
+
+    public required string StudyLoadSqid { get; init; }
     /// <summary>
     /// The starting year of the school year.
     /// </summary>
-    public int? SchoolYearStart { get; init; }
+    public required int SchoolYearStart { get; init; }
 
     /// <summary>
     /// The ending year of the school year.
     /// </summary>
-    public int? SchoolYearEnd { get; init; }
+    public required int SchoolYearEnd { get; init; }
 
     /// <summary>
     /// The semester.
     /// </summary>
-    public int? Semester { get; init; }
+    public required int Semester { get; init; }
+    public required IFormFile StudyLoadDocument { get; init; }
 }

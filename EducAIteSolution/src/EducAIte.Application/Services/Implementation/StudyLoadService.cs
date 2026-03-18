@@ -7,8 +7,8 @@ using EducAIte.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 using EducAIte.Application.DTOs.Request;
 using EducAIte.Application.DTOs.Response;
-using EducAIte.Domain.Entities;
 using EducAIte.Application.Interfaces;
+using EducAIte.Domain.Entities;
 
 /// <summary>
 /// Application service for StudyLoad operations.
@@ -17,101 +17,73 @@ using EducAIte.Application.Interfaces;
 public class StudyLoadService(
     IStudyLoadRepository studyLoadRepository,
     IStudentRepository studentRepository,
+    IFileMetadataRepository fileMetadataRepository,
     ILogger<StudyLoadService> logger,
     IAWSService awsService,
+    ISqidService sqidService,
     IUnitOfWork unitOfWork
     ) : IStudyLoadService
 {
     private readonly IStudyLoadRepository _studyLoadRepository = studyLoadRepository;
     private readonly IStudentRepository _studentRepository = studentRepository;
+    private readonly IFileMetadataRepository _fileMetadataRepository = fileMetadataRepository;
     private readonly ILogger<StudyLoadService> _logger = logger;
-    private readonly IAWSService _awsService;
+    private readonly IAWSService _awsService = awsService;
+    private readonly ISqidService _sqidService = sqidService;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
-
-    /// <summary>
-    /// Retrieves a study load by student ID.
-    /// </summary>
-    public async Task<List<StudyLoadResponse>> GetStudyLoadByStudentIdAsync(string studentSqid, CancellationToken cancellationToken = default)
+    public async Task<StudyLoadDto> AddStudyLoadAsync(StudyLoadCreateRequest studyLoadCreateDto, CancellationToken cancellationToken = default)
     {
-        var student = await _studentRepository.GetByStudentIdAsync(studentId);
-        if (student is null)
-        {
-            _logger.LogWarning("Attempted to retrieve study load for non-existent student ID {StudentId}.", studentId);
-            throw new KeyNotFoundException($"Student with ID {studentId} not found.");
-        }
 
-        var studyLoads = await _studyLoadRepository.GetByStudentIdAsync(studentId, cancellationToken);
-        if (studyLoads is null)
-        {
-            _logger.LogInformation("Study load for student ID {StudentId} not found.", studentId);
-            return [];
-        }
+        StudyLoad studyLoad = studyLoadCreateDto.ToEntity(_sqidService.TryDecode(studyLoadCreateDto.StudentSqid, out var studentId) ? studentId : throw new ArgumentException("Invalid Student Sqid"));
 
-        _logger.LogInformation("Retrieved study load for student ID {StudentId}.", studentId);
-        return studyLoads.ToDtoList();
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+        string path = await _awsService.UploadStudyLoad(studyLoadCreateDto, cancellationToken);
+
+        FileMetadata fileMetadata = new()
+        {
+          FileName = studyLoadCreateDto.StudyLoadDocument.FileName,
+          FileExtension = Path.GetExtension(studyLoadCreateDto.StudyLoadDocument.FileName),
+          ContentType = studyLoadCreateDto.StudyLoadDocument.ContentType,
+          StorageKey = path,
+          FileSizeInBytes = studyLoadCreateDto.StudyLoadDocument.Length,
+          UploadedAt = DateTime.UtcNow,
+          UpdatedAt = DateTime.UtcNow,
+          StudentId = studentId  
+        };
+
+        FileMetadata addedFileMetadata = await _fileMetadataRepository.AddFileMetadataAsync(fileMetadata, cancellationToken);
+
+        studyLoad.FileMetadata = addedFileMetadata;
+        studyLoad.FileMetadataId = addedFileMetadata.FileMetaDataId;
+
+        await _studyLoadRepository.AddStudyLoadAsync(studyLoad, cancellationToken);
+
+        // Buhatonon: Bulk enroll and add course associations here
+
+        await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+        return studyLoad.ToDto(_sqidService);
+
     }
 
-    /// <summary>
-    /// Creates a new study load for a student.
-    /// Validates that the student exists before creating the study load.
-    /// </summary>
-    public async Task<StudyLoadResponse> AddStudyLoadAsync(StudyLoadCreateRequest studyLoadCreateDto, CancellationToken cancellationToken = default)
+    public Task<bool> DeleteStudyLoadAsync(string studyLoadSqid, CancellationToken cancellationToken = default)
     {
-        // Validate student exists
-        var student = await _studentRepository.GetByStudentIdAsync(studyLoadCreateDto.StudentId);
-        if (student is null)
-        {
-            _logger.LogWarning("Attempted to create study load for non-existent student ID {StudentId}.", studyLoadCreateDto.StudentId);
-            throw new KeyNotFoundException($"Student with ID {studyLoadCreateDto.StudentId} not found.");
-        }
-
-        // Check if student already has a study load
-        var existingStudyLoad = await _studyLoadRepository.GetByStudentIdAsync(studyLoadCreateDto.StudentId, cancellationToken);
-        if (existingStudyLoad is not null)
-        {
-            throw new InvalidOperationException($"Student {studyLoadCreateDto.StudentId} already has a study load.");
-        }
-
-        string studyLoadPath = await _awsService.UploadFileAsync(studyLoadCreateDto.StudyLoadDocument!, $"studyloads/{studyLoadCreateDto.StudentId}/{Guid.NewGuid()}.pdf", cancellationToken);
-
-        var newStudyLoad = studyLoadCreateDto.ToEntity();
-        var createdStudyLoad = await _studyLoadRepository.AddStudyLoadAsync(newStudyLoad, cancellationToken);
-        _logger.LogInformation("Study load added for student ID {StudentId}.", createdStudyLoad.StudentId);
-        return createdStudyLoad.ToDto();
+        throw new NotImplementedException();
     }
 
-    /// <summary>
-    /// Updates an existing study load.
-    /// </summary>
-    public async Task<StudyLoadResponse> UpdateStudyLoadAsync(long id, StudyLoadUpdateRequest studyLoadUpdateDto, CancellationToken cancellationToken = default)
+    public Task<IEnumerable<StudyLoadDto>> GetAllStudyLoadsByStudentIdAsync(string studentSqid, CancellationToken cancellationToken = default)
     {
-        var existingStudyLoad = await _studyLoadRepository.GetByStudentIdAsync(id, cancellationToken);
-        if (existingStudyLoad is null)
-        {
-            _logger.LogWarning("Study load with student ID {StudentId} not found for update.", id);
-            throw new KeyNotFoundException($"Study load for student ID {id} not found.");
-        }
-
-        var updatedStudyLoad = studyLoadUpdateDto.ToEntity(existingStudyLoad);
-        var result = await _studyLoadRepository.UpdateStudyLoadAsync(updatedStudyLoad, cancellationToken);
-        _logger.LogInformation("Study load with ID {StudyLoadId} updated.", result.StudyLoadId);
-        return result.ToDto();
+        throw new NotImplementedException();
     }
 
-    /// <summary>
-    /// Deletes a study load by ID.
-    /// </summary>
-    public async Task<bool> DeleteStudyLoadAsync(long id, CancellationToken cancellationToken = default)
+    public Task<StudyLoadDto?> GetStudyLoadByIdAsync(string studyLoadSqid, CancellationToken cancellationToken = default)
     {
-        var deleted = await _studyLoadRepository.DeleteStudyLoadAsync(id, cancellationToken);
-        if (deleted)
-        {
-            _logger.LogInformation("Study load with ID {StudyLoadId} deleted.", id);
-        }
-        else
-        {
-            _logger.LogWarning("Study load with ID {StudyLoadId} not found for deletion.", id);
-        }
-        return deleted;
+        throw new NotImplementedException();
+    }
+
+    public Task<StudyLoadDto> UpdateStudyLoadAsync(StudyLoadUpdateRequest studyLoadUpdateDto, CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException();
     }
 }

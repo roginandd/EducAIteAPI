@@ -22,14 +22,14 @@ public class StudyLoadController : ControllerBase
     /// <summary>
     /// Retrieves a study load for a specific student by student ID.
     /// </summary>
-    /// <param name="studentId">The ID of the student.</param>
+    /// <param name="studentSqid">The Sqid of the student.</param>
     /// <returns>The study load if found; otherwise, 404 Not Found.</returns>
-    [HttpGet("student/{studentId:long}")]
-    public async Task<IActionResult> GetByStudentId(long studentId)
+    [HttpGet("student/{studentSqid}")]
+    public async Task<IActionResult> GetByStudentId(string studentSqid)
     {
         try
         {
-            var studyLoad = await _studyLoadService.GetStudyLoadByStudentIdAsync(studentId);
+            var studyLoad = await _studyLoadService.GetAllStudyLoadsByStudentIdAsync(studentSqid);
             if (studyLoad is null)
             {
                 return NoContent();
@@ -53,13 +53,13 @@ public class StudyLoadController : ControllerBase
     /// <param name="request">The study load creation request.</param>
     /// <returns>The created study load with 201 Created status.</returns>
     [HttpPost]
-    public async Task<IActionResult> Create([FromBody] StudyLoadCreateRequest request)
+    public async Task<IActionResult> Create([FromForm] StudyLoadCreateRequest request)
     {
         try
         {
             var createdStudyLoad = await _studyLoadService.AddStudyLoadAsync(request);
             return CreatedAtAction(nameof(GetByStudentId), 
-                new { studentId = createdStudyLoad.StudentId }, 
+                new { studentSqid = createdStudyLoad.StudentSqid }, 
                 createdStudyLoad);
         }
         catch (KeyNotFoundException ex)
@@ -85,19 +85,7 @@ public class StudyLoadController : ControllerBase
     [HttpPut("{id:long}")]
     public async Task<IActionResult> Update(long id, [FromBody] StudyLoadUpdateRequest request)
     {
-        try
-        {
-            var updatedStudyLoad = await _studyLoadService.UpdateStudyLoadAsync(id, request);
-            return Ok(updatedStudyLoad);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
-        }
+        return null;
     }
 
     /// <summary>
@@ -108,19 +96,6 @@ public class StudyLoadController : ControllerBase
     [HttpDelete("{id:long}")]
     public async Task<IActionResult> Delete(long id)
     {
-        try
-        {
-            var isDeleted = await _studyLoadService.DeleteStudyLoadAsync(id);
-            if (!isDeleted)
-            {
-                return NotFound(new { message = $"Study load with ID {id} not found." });
-            }
-
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
-        }
+        return null;
     }
 }

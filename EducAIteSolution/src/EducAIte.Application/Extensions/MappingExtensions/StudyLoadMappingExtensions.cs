@@ -1,7 +1,8 @@
-using EducAIte.Application.DTOs;
-using EducAIte.Application.DTOs.Response;
 using EducAIte.Application.DTOs.Request;
+using EducAIte.Application.DTOs.Response;
+using EducAIte.Application.Services.Interface;
 using EducAIte.Domain.Entities;
+using EducAIte.Domain.Enum;
 using EducAIte.Domain.ValueObjects;
 using Mapster;
 
@@ -16,21 +17,35 @@ public static class StudyLoadMappingExtensions
     /// <summary>
     /// Maps a StudyLoad entity to a StudyLoadResponse DTO.
     /// </summary>
-    public static StudyLoadResponse ToResponse(this StudyLoad studyLoad) => studyLoad.Adapt<StudyLoadResponse>();
+    public static StudyLoadResponse ToResponse(this StudyLoad studyLoad, ISqidService sqidService)
+    {
+        return studyLoad
+            .BuildAdapter()
+            .AddParameters("sqidService", sqidService)
+            .AdaptToType<StudyLoadResponse>();
+    }
 
     /// <summary>
-    /// Maps a StudyLoad entity to a StudyLoadResponse DTO.
+    /// Maps a StudyLoad entity to a StudyLoadDto.
     /// </summary>
-    public static StudyLoadResponse ToDto(this StudyLoad studyLoad) => studyLoad.Adapt<StudyLoadResponse>();
+    public static StudyLoadDto ToDto(this StudyLoad studyLoad, ISqidService sqidService)
+    {
+        return studyLoad
+            .BuildAdapter()
+            .AddParameters("sqidService", sqidService)
+            .AdaptToType<StudyLoadDto>();
+    }
 
     /// <summary>
     /// Maps a StudyLoadCreateRequest to a StudyLoad entity.
     /// </summary>
-    public static StudyLoad ToEntity(this StudyLoadCreateRequest dto) =>
+    public static StudyLoad ToEntity(this StudyLoadCreateRequest dto, long studentId) =>
         new()
         {
-            StudentId = dto.StudentId,
-            SchoolYear = new SchoolYear(dto.SchoolYearStart, dto.SchoolYearEnd),
+            StudentId = studentId,
+            SchoolYearStart = dto.SchoolYearStart,
+            SchoolYearEnd = dto.SchoolYearEnd,
+            Semester = NormalizeSemester(dto.Semester),
             IsDeleted = false,
             CreatedAt = DateTime.UtcNow,
             UpdatedAt = DateTime.UtcNow
@@ -39,16 +54,31 @@ public static class StudyLoadMappingExtensions
     /// <summary>
     /// Maps a StudyLoadUpdateRequest into an existing StudyLoad entity.
     /// </summary>
-    public static StudyLoad ToEntity(this StudyLoadUpdateRequest dto, StudyLoad studyLoad)
+    // public static StudyLoad ToEntity(this StudyLoadUpdateRequest dto, StudyLoad studyLoad)
+    // {
+    //     if (dto.SchoolYearStart.HasValue && dto.SchoolYearEnd.HasValue)
+    //     {
+    //         studyLoad.SchoolYearStart = dto.SchoolYearStart.Value;
+    //         studyLoad.SchoolYearEnd = dto.SchoolYearEnd.Value;
+    //     }
+
+    //     if (dto.Semester.HasValue)
+    //     {
+    //         studyLoad.Semester = NormalizeSemester(dto.Semester.Value);
+    //     }
+
+    //     studyLoad.UpdatedAt = DateTime.UtcNow;
+    //     return studyLoad;
+    // }
+
+    private static Semester NormalizeSemester(int semester)
     {
-        if (dto.SchoolYearStart.HasValue && dto.SchoolYearEnd.HasValue)
+        if (!Enum.IsDefined(typeof(Semester), semester))
         {
-            studyLoad.SchoolYear = new SchoolYear(dto.SchoolYearStart.Value, dto.SchoolYearEnd.Value);
+            throw new ArgumentException("Semester is invalid.", nameof(semester));
         }
 
-        studyLoad.UpdatedAt = DateTime.UtcNow;
-        return studyLoad;
+        return (Semester)semester;
     }
 
-    public static List<StudyLoadResponse> ToDtoList(this IEnumerable<StudyLoad> studyLoads) => studyLoads.Select(s => s.ToDto()).ToList();
 }

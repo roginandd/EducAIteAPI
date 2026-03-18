@@ -41,8 +41,6 @@ public class Student
 
     public ICollection<StudentFlashcard> StudentFlashcards { get; set; } = new HashSet<StudentFlashcard>();
 
-    public ICollection<StudentCourse> EnrolledCourses { get; set; } = new HashSet<StudentCourse>();
-
     public ICollection<Certification> Certifications {get; set;} = new HashSet<Certification>();
 
     public override string ToString()

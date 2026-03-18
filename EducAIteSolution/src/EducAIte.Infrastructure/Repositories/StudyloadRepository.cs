@@ -5,36 +5,50 @@ using EducAIte.Domain.Interfaces;
 using EducAIte.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-public class StudyLoadRepository(ApplicationDbContext context) : IStudyLoadRepository
+public class StudyLoadRepository(ApplicationDbContext dbContext) : IStudyLoadRepository
 {
-    private readonly ApplicationDbContext _context = context;
+    private readonly ApplicationDbContext _dbContext = dbContext;
 
-    public async Task<List<StudyLoad>> GetByStudentIdAsync(long studentId, CancellationToken cancellationToken = default)
+    public async Task<StudyLoad?> GetStudyLoadByIdAsync(long studyLoadId, CancellationToken cancellationToken = default)
     {
-        return await _context.StudyLoads.AsNoTracking().Where(s => s.StudentId == studentId).ToListAsync(cancellationToken);
+        return await _dbContext.StudyLoads
+            .Include(studyLoad => studyLoad.Courses)
+            .Include(studyLoad => studyLoad.FileMetadata)
+            .FirstOrDefaultAsync(studyLoad => studyLoad.StudyLoadId == studyLoadId && !studyLoad.IsDeleted, cancellationToken);
+    }
+
+    public async Task<IEnumerable<StudyLoad>> GetAllStudyLoadsByStudentIdAsync(long studentId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.StudyLoads
+            .Include(studyLoad => studyLoad.Courses)
+            .Include(studyLoad => studyLoad.FileMetadata)
+            .Where(s => s.StudentId == studentId && !s.IsDeleted)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task<StudyLoad> AddStudyLoadAsync(StudyLoad studyLoad, CancellationToken cancellationToken = default)
     {
-        _context.StudyLoads.Add(studyLoad);
-        return studyLoad;
+        var entry = await _dbContext.StudyLoads.AddAsync(studyLoad, cancellationToken);
+        
+        return entry.Entity;
     }
 
     public async Task<StudyLoad> UpdateStudyLoadAsync(StudyLoad studyLoad, CancellationToken cancellationToken = default)
     {
-        _context.StudyLoads.Update(studyLoad);
+        _dbContext.StudyLoads.Update(studyLoad);
+        
         return studyLoad;
     }
 
-    public async Task DeleteStudyLoadAsync(long id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteStudyLoadAsync(long id, CancellationToken cancellationToken = default)
     {
-        var affectedRows = await _context.StudyLoads
-            .Where(sl => sl.StudyLoadId == id)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(sl => sl.IsDeleted, true),
-                cancellationToken);
-        
-        if (affectedRows == 0)            
-            throw new KeyNotFoundException($"StudyLoad with id {id} not found.");
+        var studyLoad = await _dbContext.StudyLoads.FindAsync([id], cancellationToken);
+
+        if (studyLoad == null) return false;
+
+        studyLoad.IsDeleted = true;
+        _dbContext.StudyLoads.Update(studyLoad);
+
+        return true;
     }
 }

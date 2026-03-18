@@ -1,9 +1,11 @@
 using EducAIte.Application.DTOs.Request;
+using Microsoft.AspNetCore.Http;
 
 namespace EducAIte.Application.Services.Interface
 {
     public interface IAWSService
     {
+        Task<string> UploadFileAsync(IFormFile file, string path, CancellationToken cancellationToken);
         Task<string> UploadNoteContextAsync(UploadNoteContextRequest uploadNoteContextRequest, CancellationToken cancellationToken);
         Task<string> UploadNoteImages(UploadNoteImagesRequest uploadNoteImagesRequest, CancellationToken cancellationToken);
         Task<string> UploadStudyLoad(StudyLoadCreateRequest studyLoadCreateRequest, CancellationToken cancellationToken);

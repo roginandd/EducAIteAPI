@@ -530,9 +530,6 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
-                    b.Property<long?>("StudentId")
-                        .HasColumnType("bigint");
-
                     b.Property<long>("StudyLoadId")
                         .HasColumnType("bigint");
 
@@ -545,8 +542,6 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
 
                     b.HasIndex("CourseId")
                         .HasDatabaseName("IX_StudentCourses_CourseId");
-
-                    b.HasIndex("StudentId");
 
                     b.HasIndex("StudyLoadId")
                         .HasDatabaseName("IX_StudentCourses_StudyLoadId");
@@ -614,9 +609,7 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .HasDefaultValue(0);
 
                     b.Property<int>("State")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(1);
+                        .HasColumnType("integer");
 
                     b.Property<long>("StudentId")
                         .HasColumnType("bigint");
@@ -666,6 +659,17 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .HasColumnType("boolean")
                         .HasDefaultValue(false);
 
+                    b.Property<int>("SchoolYearEnd")
+                        .HasColumnType("integer")
+                        .HasColumnName("SchoolYearEnd");
+
+                    b.Property<int>("SchoolYearStart")
+                        .HasColumnType("integer")
+                        .HasColumnName("SchoolYearStart");
+
+                    b.Property<int>("Semester")
+                        .HasColumnType("integer");
+
                     b.Property<long>("StudentId")
                         .HasColumnType("bigint");
 
@@ -679,6 +683,10 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                     b.HasIndex("FileMetadataId");
 
                     b.HasIndex("StudentId");
+
+                    b.HasIndex("StudentId", "SchoolYearStart", "SchoolYearEnd", "Semester")
+                        .IsUnique()
+                        .HasDatabaseName("IX_StudyLoads_StudentSchoolYearSemesterUnique");
 
                     b.ToTable("StudyLoads", (string)null);
                 });
@@ -832,10 +840,6 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("EducAIte.Domain.Entities.Student", null)
-                        .WithMany("EnrolledCourses")
-                        .HasForeignKey("StudentId");
-
                     b.HasOne("EducAIte.Domain.Entities.StudyLoad", "StudyLoad")
                         .WithMany()
                         .HasForeignKey("StudyLoadId")
@@ -880,31 +884,7 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.OwnsOne("EducAIte.Domain.ValueObjects.SchoolYear", "SchoolYear", b1 =>
-                        {
-                            b1.Property<long>("StudyLoadId")
-                                .HasColumnType("bigint");
-
-                            b1.Property<int>("EndYear")
-                                .HasColumnType("integer")
-                                .HasColumnName("SchoolYearEnd");
-
-                            b1.Property<int>("StartYear")
-                                .HasColumnType("integer")
-                                .HasColumnName("SchoolYearStart");
-
-                            b1.HasKey("StudyLoadId");
-
-                            b1.ToTable("StudyLoads");
-
-                            b1.WithOwner()
-                                .HasForeignKey("StudyLoadId");
-                        });
-
                     b.Navigation("FileMetadata");
-
-                    b.Navigation("SchoolYear")
-                        .IsRequired();
 
                     b.Navigation("Student");
                 });
@@ -934,8 +914,6 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
             modelBuilder.Entity("EducAIte.Domain.Entities.Student", b =>
                 {
                     b.Navigation("Certifications");
-
-                    b.Navigation("EnrolledCourses");
 
                     b.Navigation("Folders");
 

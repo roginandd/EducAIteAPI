@@ -11,32 +11,34 @@ namespace EducAIte.Infrastructure.Repositories
 
         public async Task<FileMetadata?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
         {
-            return await _context.FileMetadata.AsNoTracking().FirstOrDefaultAsync(fm => fm.FileMetadataId == id, cancellationToken);
+            return await _context.FileMetadata.AsNoTracking().FirstOrDefaultAsync(fm => fm.FileMetaDataId == id && !fm.IsDeleted, cancellationToken);
         }
         public async Task<FileMetadata> AddFileMetadataAsync(FileMetadata fileMetadata, CancellationToken cancellationToken = default)
         {
-            return await _context.FileMetadata.AddAsync(fileMetadata, cancellationToken);
+            var entry = await _context.FileMetadata.AddAsync(fileMetadata, cancellationToken);
+            
+            return entry.Entity;
         }
         public async Task<FileMetadata> UpdateFileMetadataAsync(FileMetadata fileMetadata, CancellationToken cancellationToken = default)
         {
             var affectedRows = await _context.FileMetadata
-                .Where(fm => fm.FileMetadataId == fileMetadata.FileMetadataId)
+                .Where(fm => fm.FileMetaDataId == fileMetadata.FileMetaDataId && !fm.IsDeleted)
                 .ExecuteUpdateAsync(setters =>
                     setters
                         .SetProperty(f => f.FileName, fileMetadata.FileName)
-                        .SetProperty(f => f.FileSize, fileMetadata.FileSize)
+                        .SetProperty(f => f.FileSizeInBytes, fileMetadata.FileSizeInBytes)
                         .SetProperty(f => f.ContentType, fileMetadata.ContentType),
                 cancellationToken);
 
             if (affectedRows == 0)
-                throw new KeyNotFoundException($"FileMetadata with id {fileMetadata.FileMetadataId} not found.");
+                throw new KeyNotFoundException($"FileMetadata with id {fileMetadata.FileMetaDataId} not found.");
 
             return fileMetadata;
         }
         public async Task DeleteFileMetadataAsync(long id, CancellationToken cancellationToken = default)
         {
             var affectedRows = await _context.FileMetadata
-                .Where(fm => fm.FileMetadataId == id)
+                .Where(fm => fm.FileMetaDataId == id && !fm.IsDeleted)
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(f => f.IsDeleted, true),
                     cancellationToken);

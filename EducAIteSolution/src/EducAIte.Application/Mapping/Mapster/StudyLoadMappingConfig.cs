@@ -1,20 +1,36 @@
+namespace EducAIte.Application.Mapping.Configurations;
+
 using EducAIte.Application.DTOs.Response;
 using EducAIte.Application.Services.Interface;
 using EducAIte.Domain.Entities;
 using Mapster;
 
-namespace EducAIte.Application.Mapping.Configurations;
-
+/// <summary>
+/// Registers StudyLoad mappings that depend on sqid conversion.
+/// </summary>
 public sealed class StudyLoadMappingConfig : IRegister
 {
+    /// <summary>
+    /// Registers the study load mappings.
+    /// </summary>
+    /// <param name="config">The Mapster configuration instance.</param>
     public void Register(TypeAdapterConfig config)
     {
         config.NewConfig<StudyLoad, StudyLoadResponse>()
-            .Map(dest => dest.StudyLoadSqid, src => GetSqidService().Encode(src.StudyLoadId))
+            .Map(dest => dest.Sqid, src => GetSqidService().Encode(src.StudyLoadId))
             .Map(dest => dest.StudentSqid, src => GetSqidService().Encode(src.StudentId))
-            .Map(dest => dest.FileMetadataSqid, src => GetSqidService().Encode(src.FileMetadataId))
-            .Map(dest => dest.Courses, src => src.Courses.Select(course => course.Adapt<CourseResponse>()).ToList())
-            .Map(dest => dest.TotalUnits, src => src.TotalUnits);
+            .Map(dest => dest.FileMetadataSqid, src => src.FileMetadataId > 0 ? GetSqidService().Encode(src.FileMetadataId) : string.Empty)
+            .Map(dest => dest.SchoolYearStart, src => src.SchoolYearStart)
+            .Map(dest => dest.SchoolYearEnd, src => src.SchoolYearEnd)
+            .Map(dest => dest.Semester, src => src.Semester.ToString());
+
+        config.NewConfig<StudyLoad, StudyLoadDto>()
+            .Map(dest => dest.Sqid, src => GetSqidService().Encode(src.StudyLoadId))
+            .Map(dest => dest.StudentSqid, src => GetSqidService().Encode(src.StudentId))
+            .Map(dest => dest.FileMetadataSqid, src => src.FileMetadataId > 0 ? GetSqidService().Encode(src.FileMetadataId) : string.Empty)
+            .Map(dest => dest.SchoolYearStart, src => src.SchoolYearStart)
+            .Map(dest => dest.SchoolYearEnd, src => src.SchoolYearEnd)
+            .Map(dest => dest.Semester, src => src.Semester.ToString());
     }
 
     private static ISqidService GetSqidService()
