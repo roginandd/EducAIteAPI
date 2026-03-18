@@ -1,21 +1,24 @@
 using EducAIte.Application.DTOs.Request;
 using EducAIte.Application.DTOs.Response;
 using EducAIte.Application.Extensions.MappingExtensions;
+using EducAIte.Application.Interfaces;
 using EducAIte.Application.Services.Interface;
 using EducAIte.Domain.Entities;
+using EducAIte.Domain.Enum;
 using EducAIte.Domain.Interfaces;
-using Microsoft.Extensions.Logging;
 
 namespace EducAIte.Application.Services.Implementation;
 
 /// <summary>
-/// Orchestrates student course enrollment use cases.
+/// Orchestrates student course enrollment and grade use cases.
 /// </summary>
 public sealed class StudentCourseService : IStudentCourseService
 {
     private readonly IStudentCourseRepository _studentCourseRepository;
     private readonly IStudyLoadRepository _studyLoadRepository;
     private readonly ICourseRepository _courseRepository;
+    private readonly ISqidService _sqidService;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<StudentCourseService> _logger;
 
     /// <summary>
@@ -24,29 +27,39 @@ public sealed class StudentCourseService : IStudentCourseService
     /// <param name="studentCourseRepository">The enrollment repository.</param>
     /// <param name="studyLoadRepository">The study load repository.</param>
     /// <param name="courseRepository">The course repository.</param>
+    /// <param name="sqidService">The sqid encoder and decoder.</param>
+    /// <param name="unitOfWork">The application unit of work.</param>
     /// <param name="logger">The service logger.</param>
     public StudentCourseService(
         IStudentCourseRepository studentCourseRepository,
         IStudyLoadRepository studyLoadRepository,
         ICourseRepository courseRepository,
+        ISqidService sqidService,
+        IUnitOfWork unitOfWork,
         ILogger<StudentCourseService> logger)
     {
         _studentCourseRepository = studentCourseRepository;
         _studyLoadRepository = studyLoadRepository;
         _courseRepository = courseRepository;
+        _sqidService = sqidService;
+        _unitOfWork = unitOfWork;
         _logger = logger;
     }
 
     /// <inheritdoc />
-    public async Task<StudentCourseResponse?> GetByIdAsync(long studentCourseId, long studentId, CancellationToken cancellationToken = default)
+    public async Task<StudentCourseResponse?> GetByIdAsync(string studentCourseSqid, long studentId, CancellationToken cancellationToken = default)
     {
         EnsureStudentIdIsValid(studentId);
-        EnsurePositiveId(studentCourseId, nameof(studentCourseId));
+
+        if (!_sqidService.TryDecode(studentCourseSqid, out long studentCourseId))
+        {
+            throw new ArgumentException("StudentCourseSqid is invalid.", nameof(studentCourseSqid));
+        }
 
         StudentCourse? studentCourse = await _studentCourseRepository.GetByIdAndStudentIdAsync(studentCourseId, studentId, cancellationToken);
         if (studentCourse is not null)
         {
-            return studentCourse.ToResponse();
+            return studentCourse.ToResponse(_sqidService);
         }
 
         bool exists = await _studentCourseRepository.ExistsByIdAsync(studentCourseId, cancellationToken);
@@ -65,21 +78,25 @@ public sealed class StudentCourseService : IStudentCourseService
 
         IReadOnlyList<StudentCourse> studentCourses = await _studentCourseRepository.GetAllByStudentIdAsync(studentId, cancellationToken);
         return studentCourses
-            .Select(studentCourse => studentCourse.ToResponse())
+            .Select(studentCourse => studentCourse.ToResponse(_sqidService))
             .ToList();
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<StudentCourseResponse>> GetByStudyLoadAsync(long studyLoadId, long studentId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<StudentCourseResponse>> GetByStudyLoadAsync(string studyLoadSqid, long studentId, CancellationToken cancellationToken = default)
     {
         EnsureStudentIdIsValid(studentId);
-        EnsurePositiveId(studyLoadId, nameof(studyLoadId));
+
+        if (!_sqidService.TryDecode(studyLoadSqid, out long studyLoadId))
+        {
+            throw new ArgumentException("StudyLoadSqid is invalid.", nameof(studyLoadSqid));
+        }
 
         await GetOwnedStudyLoadOrThrowAsync(studyLoadId, studentId, cancellationToken);
         IReadOnlyList<StudentCourse> studentCourses = await _studentCourseRepository.GetAllByStudyLoadIdAndStudentIdAsync(studyLoadId, studentId, cancellationToken);
 
         return studentCourses
-            .Select(studentCourse => studentCourse.ToResponse())
+            .Select(studentCourse => studentCourse.ToResponse(_sqidService))
             .ToList();
     }
 
@@ -89,50 +106,78 @@ public sealed class StudentCourseService : IStudentCourseService
         ArgumentNullException.ThrowIfNull(request);
         EnsureStudentIdIsValid(studentId);
 
-        StudyLoad studyLoad = await GetOwnedStudyLoadOrThrowAsync(request.StudyLoadId, studentId, cancellationToken);
-        Course course = await GetCourseOrThrowAsync(request.CourseId, cancellationToken);
+        long courseId = DecodeSqidOrThrow(request.CourseSqid, nameof(request.CourseSqid));
+        long studyLoadId = DecodeSqidOrThrow(request.StudyLoadSqid, nameof(request.StudyLoadSqid));
+
+        await GetOwnedStudyLoadOrThrowAsync(studyLoadId, studentId, cancellationToken);
+        await GetCourseOrThrowAsync(courseId, cancellationToken);
 
         StudentCourse? existing = await _studentCourseRepository.GetByCourseAndStudyLoadAsync(
-            request.CourseId,
-            request.StudyLoadId,
+            courseId,
+            studyLoadId,
             includeDeleted: true,
             cancellationToken: cancellationToken);
 
-        if (existing is not null)
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+        try
         {
-            if (!existing.IsDeleted)
+            if (existing is not null)
             {
-                throw new InvalidOperationException("The course is already enrolled for the selected study load.");
+                if (!existing.IsDeleted)
+                {
+                    throw new InvalidOperationException("The course is already enrolled for the selected study load.");
+                }
+
+                existing.Restore();
+                await _studentCourseRepository.UpdateAsync(existing, cancellationToken);
+                await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+                _logger.LogInformation(
+                    "Restored student course {StudentCourseId} for study load {StudyLoadId}",
+                    existing.StudentCourseId,
+                    existing.StudyLoadId);
+
+                return existing.ToResponse(_sqidService);
             }
 
-            existing.Restore();
-            await _studentCourseRepository.UpdateAsync(existing, cancellationToken);
+            // Keep the insert graph limited to StudentCourse so EF does not try to re-insert
+            // the existing Course or StudyLoad rows that are only being referenced by FK.
+            StudentCourse studentCourse = request.ToEntity(courseId, studyLoadId);
+
+            StudentCourse created = await _studentCourseRepository.AddAsync(studentCourse, cancellationToken);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+            StudentCourse? reloaded = await _studentCourseRepository.GetByIdAndStudentIdAsync(created.StudentCourseId, studentId, cancellationToken);
+            if (reloaded is null)
+            {
+                throw new InvalidOperationException("Student course was created but could not be reloaded.");
+            }
+
             _logger.LogInformation(
-                "Restored student course {StudentCourseId} for study load {StudyLoadId}",
-                existing.StudentCourseId,
-                existing.StudyLoadId);
+                "Created student course {StudentCourseId} for study load {StudyLoadId}",
+                created.StudentCourseId,
+                created.StudyLoadId);
 
-            return existing.ToResponse();
+            return reloaded.ToResponse(_sqidService);
         }
-
-        StudentCourse studentCourse = request.ToEntity();
-        studentCourse.AssignCourse(course);
-        studentCourse.AssignStudyLoad(studyLoad);
-
-        StudentCourse created = await _studentCourseRepository.AddAsync(studentCourse, cancellationToken);
-        _logger.LogInformation(
-            "Created student course {StudentCourseId} for study load {StudyLoadId}",
-            created.StudentCourseId,
-            created.StudyLoadId);
-
-        return created.ToResponse();
+        catch (Exception ex)
+        {
+            await SafeRollbackAsync(cancellationToken);
+            _logger.LogError(ex, "Error occurred while creating or restoring a student course for student {StudentId}", studentId);
+            throw;
+        }
     }
 
     /// <inheritdoc />
-    public async Task<bool> DeleteAsync(long studentCourseId, long studentId, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(string studentCourseSqid, long studentId, CancellationToken cancellationToken = default)
     {
         EnsureStudentIdIsValid(studentId);
-        EnsurePositiveId(studentCourseId, nameof(studentCourseId));
+
+        if (!_sqidService.TryDecode(studentCourseSqid, out long studentCourseId))
+        {
+            throw new ArgumentException("StudentCourseSqid is invalid.", nameof(studentCourseSqid));
+        }
 
         StudentCourse? studentCourse = await _studentCourseRepository.GetByIdAndStudentIdAsync(studentCourseId, studentId, cancellationToken);
         if (studentCourse is null)
@@ -146,10 +191,158 @@ public sealed class StudentCourseService : IStudentCourseService
             return false;
         }
 
-        studentCourse.MarkDeleted();
-        await _studentCourseRepository.UpdateAsync(studentCourse, cancellationToken);
-        _logger.LogInformation("Archived student course {StudentCourseId}", studentCourseId);
-        return true;
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            studentCourse.MarkDeleted();
+            await _studentCourseRepository.UpdateAsync(studentCourse, cancellationToken);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+            _logger.LogInformation("Archived student course {StudentCourseId}", studentCourseId);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await SafeRollbackAsync(cancellationToken);
+            _logger.LogError(ex, "Error occurred while deleting student course {StudentCourseId}", studentCourseId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<GradeResponseDTO>> GetGradesAsync(string studentCourseSqid, long studentId, CancellationToken cancellationToken = default)
+    {
+        EnsureStudentIdIsValid(studentId);
+
+        StudentCourse studentCourse = await GetOwnedStudentCourseBySqidOrThrowAsync(studentCourseSqid, studentId, cancellationToken);
+        return studentCourse.GetActiveGrades().ToResponses(_sqidService);
+    }
+
+    /// <inheritdoc />
+    public async Task<GradeResponseDTO?> GetGradeByTypeAsync(string studentCourseSqid, GradeType gradeType, long studentId, CancellationToken cancellationToken = default)
+    {
+        EnsureStudentIdIsValid(studentId);
+        EnsureValidGradeType(gradeType);
+
+        StudentCourse studentCourse = await GetOwnedStudentCourseBySqidOrThrowAsync(studentCourseSqid, studentId, cancellationToken);
+        Grade? grade = studentCourse.GetGrade(gradeType);
+        return grade?.ToResponse(_sqidService);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<GradeResponseDTO>> GetGradesByTypeAsync(GetGradesByTypeDTO request, long studentId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        EnsureStudentIdIsValid(studentId);
+
+        IReadOnlyCollection<GradeType> gradeTypes = NormalizeGradeTypes(request.GradeTypes);
+        StudentCourse studentCourse = await GetOwnedStudentCourseBySqidOrThrowAsync(request.StudentCourseSqid, studentId, cancellationToken);
+
+        return studentCourse
+            .GetGradesByTypes(gradeTypes)
+            .ToResponses(_sqidService);
+    }
+
+    /// <inheritdoc />
+    public async Task<GradeResponseDTO> CreateGradeAsync(CreateGradeDTO request, long studentId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        EnsureStudentIdIsValid(studentId);
+        EnsureValidGradeType(request.GradeType);
+
+        StudentCourse studentCourse = await GetOwnedStudentCourseBySqidOrThrowAsync(request.StudentCourseSqid, studentId, cancellationToken);
+
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            Grade grade = studentCourse.AddGrade(request.GradeType, request.GradeValue);
+            await _studentCourseRepository.UpdateAsync(studentCourse, cancellationToken);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Created or restored grade {GradeType} for student course {StudentCourseId}",
+                request.GradeType,
+                studentCourse.StudentCourseId);
+
+            return grade.ToResponse(_sqidService);
+        }
+        catch (Exception ex)
+        {
+            await SafeRollbackAsync(cancellationToken);
+            _logger.LogError(ex, "Error occurred while creating grade {GradeType} for student course {StudentCourseSqid}", request.GradeType, request.StudentCourseSqid);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<GradeResponseDTO> UpdateGradeAsync(UpdateGradeDTO request, long studentId, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        EnsureStudentIdIsValid(studentId);
+        EnsureValidGradeType(request.GradeType);
+
+        StudentCourse studentCourse = await GetOwnedStudentCourseBySqidOrThrowAsync(request.StudentCourseSqid, studentId, cancellationToken);
+
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            Grade grade = studentCourse.UpdateGrade(request.GradeType, request.GradeValue);
+            await _studentCourseRepository.UpdateAsync(studentCourse, cancellationToken);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Updated grade {GradeType} for student course {StudentCourseId}",
+                request.GradeType,
+                studentCourse.StudentCourseId);
+
+            return grade.ToResponse(_sqidService);
+        }
+        catch (Exception ex)
+        {
+            await SafeRollbackAsync(cancellationToken);
+            _logger.LogError(ex, "Error occurred while updating grade {GradeType} for student course {StudentCourseSqid}", request.GradeType, request.StudentCourseSqid);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> DeleteGradeAsync(string studentCourseSqid, GradeType gradeType, long studentId, CancellationToken cancellationToken = default)
+    {
+        EnsureStudentIdIsValid(studentId);
+        EnsureValidGradeType(gradeType);
+
+        StudentCourse studentCourse = await GetOwnedStudentCourseBySqidOrThrowAsync(studentCourseSqid, studentId, cancellationToken);
+
+        await _unitOfWork.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            bool deleted = studentCourse.RemoveGrade(gradeType);
+            if (!deleted)
+            {
+                await SafeRollbackAsync(cancellationToken);
+                return false;
+            }
+
+            await _studentCourseRepository.UpdateAsync(studentCourse, cancellationToken);
+            await _unitOfWork.CommitTransactionAsync(cancellationToken);
+
+            _logger.LogInformation(
+                "Archived grade {GradeType} for student course {StudentCourseId}",
+                gradeType,
+                studentCourse.StudentCourseId);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            await SafeRollbackAsync(cancellationToken);
+            _logger.LogError(ex, "Error occurred while deleting grade {GradeType} for student course {StudentCourseSqid}", gradeType, studentCourseSqid);
+            throw;
+        }
     }
 
     private async Task<StudyLoad> GetOwnedStudyLoadOrThrowAsync(long studyLoadId, long studentId, CancellationToken cancellationToken)
@@ -169,6 +362,28 @@ public sealed class StudentCourseService : IStudentCourseService
         throw new KeyNotFoundException($"Study load with ID {studyLoadId} was not found.");
     }
 
+    private async Task<StudentCourse> GetOwnedStudentCourseBySqidOrThrowAsync(string studentCourseSqid, long studentId, CancellationToken cancellationToken)
+    {
+        if (!_sqidService.TryDecode(studentCourseSqid, out long studentCourseId))
+        {
+            throw new ArgumentException("StudentCourseSqid is invalid.", nameof(studentCourseSqid));
+        }
+
+        StudentCourse? studentCourse = await _studentCourseRepository.GetByIdAndStudentIdAsync(studentCourseId, studentId, cancellationToken);
+        if (studentCourse is not null)
+        {
+            return studentCourse;
+        }
+
+        bool exists = await _studentCourseRepository.ExistsByIdAsync(studentCourseId, cancellationToken);
+        if (exists)
+        {
+            throw new UnauthorizedAccessException("Student course does not belong to the authenticated student.");
+        }
+
+        throw new KeyNotFoundException("Student course was not found.");
+    }
+
     private async Task<Course> GetCourseOrThrowAsync(long courseId, CancellationToken cancellationToken)
     {
         EnsurePositiveId(courseId, nameof(courseId));
@@ -180,6 +395,59 @@ public sealed class StudentCourseService : IStudentCourseService
         }
 
         throw new KeyNotFoundException($"Course with ID {courseId} was not found.");
+    }
+
+    private long DecodeSqidOrThrow(string sqid, string paramName)
+    {
+        if (!_sqidService.TryDecode(sqid, out long id))
+        {
+            throw new ArgumentException($"{paramName} is invalid.", paramName);
+        }
+
+        return id;
+    }
+
+    private async Task SafeRollbackAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _unitOfWork.RollbackTransactionAsync(cancellationToken);
+        }
+        catch (Exception rollbackException)
+        {
+            _logger.LogWarning(rollbackException, "Rollback failed for student course transaction.");
+        }
+    }
+
+    private static IReadOnlyCollection<GradeType> NormalizeGradeTypes(IReadOnlyCollection<GradeType> gradeTypes)
+    {
+        ArgumentNullException.ThrowIfNull(gradeTypes);
+
+        if (gradeTypes.Count == 0)
+        {
+            throw new ArgumentException("At least one grade type must be provided.", nameof(gradeTypes));
+        }
+
+        GradeType[] normalized = gradeTypes
+            .Distinct()
+            .ToArray();
+
+        foreach (GradeType gradeType in normalized)
+        {
+            EnsureValidGradeType(gradeType);
+        }
+
+        return normalized;
+    }
+
+    private static void EnsureValidGradeType(GradeType gradeType)
+    {
+        bool isGradeTypeValid = Enum.IsDefined(typeof(GradeType), gradeType);
+
+        if (!isGradeTypeValid)
+        {
+            throw new ArgumentException("Grade type is invalid.", nameof(gradeType));
+        }
     }
 
     private static void EnsureStudentIdIsValid(long studentId)
