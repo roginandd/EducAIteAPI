@@ -93,23 +93,23 @@ public sealed class StudentCourseRepository : IStudentCourseRepository
     }
 
     /// <inheritdoc />
-    public async Task<StudentCourse> AddAsync(StudentCourse studentCourse, CancellationToken cancellationToken = default)
+    public Task<StudentCourse> AddAsync(StudentCourse studentCourse, CancellationToken cancellationToken = default)
     {
         _context.StudentCourses.Add(studentCourse);
-        await _context.SaveChangesAsync(cancellationToken);
-        return studentCourse;
+        return Task.FromResult(studentCourse);
     }
 
     /// <inheritdoc />
-    public async Task UpdateAsync(StudentCourse studentCourse, CancellationToken cancellationToken = default)
+    public Task UpdateAsync(StudentCourse studentCourse, CancellationToken cancellationToken = default)
     {
-        await _context.SaveChangesAsync(cancellationToken);
+        return Task.CompletedTask;
     }
 
     private IQueryable<StudentCourse> CreateBaseQuery()
     {
         return _context.StudentCourses
             .Include(studentCourse => studentCourse.Course)
+            .Include(studentCourse => studentCourse.Grades)
             .Include(studentCourse => studentCourse.StudyLoad);
     }
 }

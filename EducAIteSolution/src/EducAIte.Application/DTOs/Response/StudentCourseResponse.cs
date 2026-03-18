@@ -6,19 +6,19 @@ namespace EducAIte.Application.DTOs.Response;
 public record StudentCourseResponse
 {
     /// <summary>
-    /// Gets the enrollment identifier.
+    /// Gets the sqid representation of the enrollment identifier.
     /// </summary>
-    public required long StudentCourseId { get; init; }
+    public required string Sqid { get; init; } = string.Empty;
 
     /// <summary>
-    /// Gets the course identifier.
+    /// Gets the sqid representation of the course identifier.
     /// </summary>
-    public required long CourseId { get; init; }
+    public required string CourseSqid { get; init; } = string.Empty;
 
     /// <summary>
-    /// Gets the study load identifier.
+    /// Gets the sqid representation of the study load identifier.
     /// </summary>
-    public required long StudyLoadId { get; init; }
+    public required string StudyLoadSqid { get; init; } = string.Empty;
 
     /// <summary>
     /// Gets the course EDP code.
