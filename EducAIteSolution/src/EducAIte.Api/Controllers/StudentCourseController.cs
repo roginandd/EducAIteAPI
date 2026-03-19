@@ -63,15 +63,22 @@ public class StudentCourseController : ControllerBase
     /// Retrieves all enrollments for the authenticated student.
     /// </summary>
     [HttpGet("me")]
-    public async Task<IActionResult> GetMine(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetMine([FromQuery] GetStudentCoursesRequest? request, CancellationToken cancellationToken)
     {
         if (!TryGetCurrentStudentId(out long studentId))
         {
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        IReadOnlyList<StudentCourseResponse> studentCourses = await _studentCourseService.GetMineAsync(studentId, cancellationToken);
-        return Ok(studentCourses);
+        try
+        {
+            IReadOnlyList<StudentCourseResponse> studentCourses = await _studentCourseService.GetMineAsync(studentId, request, cancellationToken);
+            return Ok(studentCourses);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     /// <summary>
