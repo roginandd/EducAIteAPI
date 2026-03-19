@@ -17,7 +17,7 @@ public interface IStudentCourseService
     /// <summary>
     /// Retrieves all enrollments owned by the authenticated student.
     /// </summary>
-    Task<IReadOnlyList<StudentCourseResponse>> GetMineAsync(long studentId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<StudentCourseResponse>> GetMineAsync(long studentId, GetStudentCoursesRequest? request = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Retrieves all enrollments for a study load owned by the authenticated student.

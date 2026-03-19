@@ -72,11 +72,23 @@ public sealed class StudentCourseService : IStudentCourseService
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<StudentCourseResponse>> GetMineAsync(long studentId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<StudentCourseResponse>> GetMineAsync(
+        long studentId,
+        GetStudentCoursesRequest? request = null,
+        CancellationToken cancellationToken = default)
     {
         EnsureStudentIdIsValid(studentId);
+        request ??= new GetStudentCoursesRequest();
 
-        IReadOnlyList<StudentCourse> studentCourses = await _studentCourseRepository.GetAllByStudentIdAsync(studentId, cancellationToken);
+        Semester? semester = NormalizeSemester(request.Semester);
+        ValidateSchoolYear(request.SchoolYearStart, request.SchoolYearEnd);
+
+        IReadOnlyList<StudentCourse> studentCourses = await _studentCourseRepository.GetAllByStudentIdAsync(
+            studentId,
+            semester,
+            request.SchoolYearStart,
+            request.SchoolYearEnd,
+            cancellationToken);
         return studentCourses
             .Select(studentCourse => studentCourse.ToResponse(_sqidService))
             .ToList();
@@ -455,6 +467,37 @@ public sealed class StudentCourseService : IStudentCourseService
         if (studentId <= 0)
         {
             throw new ArgumentException("StudentId must be greater than zero.");
+        }
+    }
+
+    private static Semester? NormalizeSemester(int? semester)
+    {
+        if (!semester.HasValue)
+        {
+            return null;
+        }
+
+        if (!Enum.IsDefined(typeof(Semester), semester.Value))
+        {
+            throw new ArgumentException("Semester is invalid.", nameof(semester));
+        }
+
+        return (Semester)semester.Value;
+    }
+
+    private static void ValidateSchoolYear(int? schoolYearStart, int? schoolYearEnd)
+    {
+        bool hasSchoolYearStart = schoolYearStart.HasValue;
+        bool hasSchoolYearEnd = schoolYearEnd.HasValue;
+
+        if (hasSchoolYearStart != hasSchoolYearEnd)
+        {
+            throw new ArgumentException("SchoolYearStart and SchoolYearEnd must both be provided when filtering by school year.");
+        }
+
+        if (hasSchoolYearStart && schoolYearEnd != schoolYearStart + 1)
+        {
+            throw new ArgumentException("School year is invalid.");
         }
     }
 
