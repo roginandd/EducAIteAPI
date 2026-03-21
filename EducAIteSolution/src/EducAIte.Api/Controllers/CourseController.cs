@@ -39,15 +39,8 @@ public class CourseController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCourseRequest request)
     {
-        try
-        {
-            var createdCourse = await _courseService.CreateCourseAsync(request);
-            return CreatedAtAction(nameof(GetById), new { id = createdCourse.CourseId }, createdCourse);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
+        var createdCourse = await _courseService.CreateCourseAsync(request);
+        return CreatedAtAction(nameof(GetById), new { id = createdCourse.CourseId }, createdCourse);
     }
 
     [HttpPost("bulk")]
@@ -60,20 +53,13 @@ public class CourseController : ControllerBase
     [HttpPut("{id:long}")]
     public async Task<IActionResult> Update(long id, [FromBody] UpdateCourseRequest request)
     {
-        try
+        var isUpdated = await _courseService.UpdateCourseAsync(id, request);
+        if (!isUpdated)
         {
-            var isUpdated = await _courseService.UpdateCourseAsync(id, request);
-            if (!isUpdated)
-            {
-                return NotFound();
-            }
+            return NotFound();
+        }
 
-            return NoContent();
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
+        return NoContent();
     }
 
     [HttpDelete("{id:long}")]

@@ -39,24 +39,13 @@ public class StudentCourseController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
+        StudentCourseResponse? studentCourse = await _studentCourseService.GetByIdAsync(studentCourseSqid, studentId, cancellationToken);
+        if (studentCourse is null)
         {
-            StudentCourseResponse? studentCourse = await _studentCourseService.GetByIdAsync(studentCourseSqid, studentId, cancellationToken);
-            if (studentCourse is null)
-            {
-                return NotFound();
-            }
+            return NotFound();
+        }
 
-            return Ok(studentCourse);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        return Ok(studentCourse);
     }
 
     /// <summary>
@@ -70,15 +59,8 @@ public class StudentCourseController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            IReadOnlyList<StudentCourseResponse> studentCourses = await _studentCourseService.GetMineAsync(studentId, request, cancellationToken);
-            return Ok(studentCourses);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        IReadOnlyList<StudentCourseResponse> studentCourses = await _studentCourseService.GetMineAsync(studentId, request, cancellationToken);
+        return Ok(studentCourses);
     }
 
     /// <summary>
@@ -92,23 +74,8 @@ public class StudentCourseController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            IReadOnlyList<StudentCourseResponse> studentCourses = await _studentCourseService.GetByStudyLoadAsync(studyLoadSqid, studentId, cancellationToken);
-            return Ok(studentCourses);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        IReadOnlyList<StudentCourseResponse> studentCourses = await _studentCourseService.GetByStudyLoadAsync(studyLoadSqid, studentId, cancellationToken);
+        return Ok(studentCourses);
     }
 
     /// <summary>
@@ -122,23 +89,8 @@ public class StudentCourseController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            IReadOnlyList<GradeResponseDTO> grades = await _studentCourseService.GetGradesAsync(studentCourseSqid, studentId, cancellationToken);
-            return Ok(grades);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        IReadOnlyList<GradeResponseDTO> grades = await _studentCourseService.GetGradesAsync(studentCourseSqid, studentId, cancellationToken);
+        return Ok(grades);
     }
 
     /// <summary>
@@ -152,28 +104,13 @@ public class StudentCourseController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
+        GradeResponseDTO? grade = await _studentCourseService.GetGradeByTypeAsync(studentCourseSqid, gradeType, studentId, cancellationToken);
+        if (grade is null)
         {
-            GradeResponseDTO? grade = await _studentCourseService.GetGradeByTypeAsync(studentCourseSqid, gradeType, studentId, cancellationToken);
-            if (grade is null)
-            {
-                return NotFound();
-            }
+            return NotFound();
+        }
 
-            return Ok(grade);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        return Ok(grade);
     }
 
     /// <summary>
@@ -187,23 +124,8 @@ public class StudentCourseController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            IReadOnlyList<GradeResponseDTO> grades = await _studentCourseService.GetGradesByTypeAsync(request, studentId, cancellationToken);
-            return Ok(grades);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        IReadOnlyList<GradeResponseDTO> grades = await _studentCourseService.GetGradesByTypeAsync(request, studentId, cancellationToken);
+        return Ok(grades);
     }
 
     /// <summary>
@@ -217,27 +139,8 @@ public class StudentCourseController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            StudentCourseResponse created = await _studentCourseService.CreateAsync(request, studentId, cancellationToken);
-            return CreatedAtAction(nameof(GetById), new { studentCourseSqid = created.Sqid }, created);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        StudentCourseResponse created = await _studentCourseService.CreateAsync(request, studentId, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { studentCourseSqid = created.Sqid }, created);
     }
 
     /// <summary>
@@ -251,30 +154,11 @@ public class StudentCourseController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            GradeResponseDTO created = await _studentCourseService.CreateGradeAsync(request, studentId, cancellationToken);
-            return CreatedAtAction(
-                nameof(GetGradeByType),
-                new { studentCourseSqid = created.StudentCourseSqid, gradeType = created.GradeType },
-                created);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        GradeResponseDTO created = await _studentCourseService.CreateGradeAsync(request, studentId, cancellationToken);
+        return CreatedAtAction(
+            nameof(GetGradeByType),
+            new { studentCourseSqid = created.StudentCourseSqid, gradeType = created.GradeType },
+            created);
     }
 
     /// <summary>
@@ -288,27 +172,8 @@ public class StudentCourseController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            GradeResponseDTO updated = await _studentCourseService.UpdateGradeAsync(request, studentId, cancellationToken);
-            return Ok(updated);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        GradeResponseDTO updated = await _studentCourseService.UpdateGradeAsync(request, studentId, cancellationToken);
+        return Ok(updated);
     }
 
     /// <summary>
@@ -322,24 +187,13 @@ public class StudentCourseController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
+        bool deleted = await _studentCourseService.DeleteAsync(studentCourseSqid, studentId, cancellationToken);
+        if (!deleted)
         {
-            bool deleted = await _studentCourseService.DeleteAsync(studentCourseSqid, studentId, cancellationToken);
-            if (!deleted)
-            {
-                return NotFound();
-            }
+            return NotFound();
+        }
 
-            return NoContent();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        return NoContent();
     }
 
     /// <summary>
@@ -353,28 +207,13 @@ public class StudentCourseController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
+        bool deleted = await _studentCourseService.DeleteGradeAsync(studentCourseSqid, gradeType, studentId, cancellationToken);
+        if (!deleted)
         {
-            bool deleted = await _studentCourseService.DeleteGradeAsync(studentCourseSqid, gradeType, studentId, cancellationToken);
-            if (!deleted)
-            {
-                return NotFound();
-            }
+            return NotFound();
+        }
 
-            return NoContent();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        return NoContent();
     }
 
     private bool TryGetCurrentStudentId(out long studentId)
