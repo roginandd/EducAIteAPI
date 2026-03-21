@@ -3,6 +3,9 @@ using EducAIte.Application.DTOs.Response;
 using EducAIte.Application.Extensions.MappingExtensions;
 using EducAIte.Application.Services.Interface;
 using EducAIte.Domain.Entities;
+using EducAIte.Domain.Exceptions.Base;
+using EducAIte.Domain.Exceptions.Flashcard;
+using EducAIte.Domain.Exceptions.StudentFlashcard;
 using EducAIte.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -234,17 +237,17 @@ public sealed class StudentFlashcardService : IStudentFlashcardService
         bool exists = await _flashcardRepository.ExistsByIdAsync(flashcardId, cancellationToken);
         if (exists)
         {
-            throw new UnauthorizedAccessException("Flashcard does not belong to the authenticated student.");
+            throw new FlashcardForbiddenException();
         }
 
-        throw new KeyNotFoundException($"Flashcard with ID {flashcardId} was not found.");
+        throw new FlashcardNotFoundException(flashcardId);
     }
 
     private long DecodeRequiredSqid(string sqid, string fieldName)
     {
         if (!_sqidService.TryDecode(sqid, out long id))
         {
-            throw new ArgumentException($"{fieldName} is invalid.");
+            throw new InvalidSqidException(fieldName);
         }
 
         return id;
@@ -254,7 +257,7 @@ public sealed class StudentFlashcardService : IStudentFlashcardService
     {
         if (studentId <= 0)
         {
-            throw new ArgumentException("StudentId must be greater than zero.");
+            throw new StudentFlashcardValidationException("StudentId must be greater than zero.");
         }
     }
 
