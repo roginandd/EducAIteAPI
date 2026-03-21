@@ -27,24 +27,13 @@ public class StudyLoadController : ControllerBase
     [HttpGet("student/{studentSqid}")]
     public async Task<IActionResult> GetByStudentId(string studentSqid)
     {
-        try
+        var studyLoad = await _studyLoadService.GetAllStudyLoadsByStudentIdAsync(studentSqid);
+        if (studyLoad is null)
         {
-            var studyLoad = await _studyLoadService.GetAllStudyLoadsByStudentIdAsync(studentSqid);
-            if (studyLoad is null)
-            {
-                return NoContent();
-            }
+            return NoContent();
+        }
 
-            return Ok(studyLoad);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
-        }
+        return Ok(studyLoad);
     }
 
     /// <summary>
@@ -55,25 +44,10 @@ public class StudyLoadController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromForm] StudyLoadCreateRequest request)
     {
-        try
-        {
-            var createdStudyLoad = await _studyLoadService.AddStudyLoadAsync(request);
-            return CreatedAtAction(nameof(GetByStudentId), 
-                new { studentSqid = createdStudyLoad.StudentSqid }, 
-                createdStudyLoad);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(StatusCodes.Status500InternalServerError, new { message = ex.Message });
-        }
+        var createdStudyLoad = await _studyLoadService.AddStudyLoadAsync(request);
+        return CreatedAtAction(nameof(GetByStudentId),
+            new { studentSqid = createdStudyLoad.StudentSqid },
+            createdStudyLoad);
     }
 
     /// <summary>

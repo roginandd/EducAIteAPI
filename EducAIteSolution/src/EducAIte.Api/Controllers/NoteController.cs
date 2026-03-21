@@ -30,15 +30,7 @@ public class NoteController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        NoteResponse? note;
-        try
-        {
-            note = await _noteService.GetNoteBySqidAsync(sqid, studentId, cancellationToken);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        NoteResponse? note = await _noteService.GetNoteBySqidAsync(sqid, studentId, cancellationToken);
 
         if (note is null)
         {
@@ -56,15 +48,7 @@ public class NoteController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        IEnumerable<NoteResponse> notes;
-        try
-        {
-            notes = await _noteService.GetNotesByDocumentAsync(documentSqid, studentId, cancellationToken);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        IEnumerable<NoteResponse> notes = await _noteService.GetNotesByDocumentAsync(documentSqid, studentId, cancellationToken);
 
         return Ok(notes);
     }
@@ -89,15 +73,7 @@ public class NoteController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        NoteResponse createdNote;
-        try
-        {
-            createdNote = await _noteService.CreateNoteAsync(request, studentId, cancellationToken);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        NoteResponse createdNote = await _noteService.CreateNoteAsync(request, studentId, cancellationToken);
 
         return CreatedAtAction(nameof(GetById), new { sqid = createdNote.Sqid }, createdNote);
     }
@@ -114,35 +90,20 @@ public class NoteController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            bool moved = await _noteOrderingService.MoveBetweenAsync(
-                studentId,
-                documentSqid,
-                noteSqid,
-                request.PreviousNoteSqid,
-                request.NextNoteSqid,
-                cancellationToken);
+        bool moved = await _noteOrderingService.MoveBetweenAsync(
+            studentId,
+            documentSqid,
+            noteSqid,
+            request.PreviousNoteSqid,
+            request.NextNoteSqid,
+            cancellationToken);
 
-            if (!moved)
-            {
-                return NotFound();
-            }
+        if (!moved)
+        {
+            return NotFound();
+        }
 
-            return NoContent();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        return NoContent();
     }
 
     [HttpPost("/api/documents/{documentSqid}/notes/rebalance")]
@@ -153,19 +114,8 @@ public class NoteController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            await _noteOrderingService.RebalanceAsync(studentId, documentSqid, cancellationToken);
-            return NoContent();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        await _noteOrderingService.RebalanceAsync(studentId, documentSqid, cancellationToken);
+        return NoContent();
     }
 
     [HttpPut("{sqid}")]
@@ -176,15 +126,7 @@ public class NoteController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        bool isUpdated;
-        try
-        {
-            isUpdated = await _noteService.UpdateNoteAsync(sqid, request, studentId, cancellationToken);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        bool isUpdated = await _noteService.UpdateNoteAsync(sqid, request, studentId, cancellationToken);
 
         if (!isUpdated)
         {
@@ -202,15 +144,7 @@ public class NoteController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        bool isPatched;
-        try
-        {
-            isPatched = await _noteService.PatchNoteAsync(sqid, request, studentId, cancellationToken);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        bool isPatched = await _noteService.PatchNoteAsync(sqid, request, studentId, cancellationToken);
 
         if (!isPatched)
         {
@@ -228,15 +162,7 @@ public class NoteController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        bool isDeleted;
-        try
-        {
-            isDeleted = await _noteService.DeleteNoteAsync(sqid, studentId, cancellationToken);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        bool isDeleted = await _noteService.DeleteNoteAsync(sqid, studentId, cancellationToken);
 
         if (!isDeleted)
         {

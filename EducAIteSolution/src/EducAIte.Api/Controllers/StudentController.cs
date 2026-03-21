@@ -22,34 +22,16 @@ public class StudentController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Register([FromBody] StudentRegistrationRequest request)
     {
-        try
-        {
-            var registeredStudent = await _studentService.RegisterStudentAsync(request);
-            return CreatedAtAction(nameof(GetById), new { studentSqid = registeredStudent.Sqid }, registeredStudent);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
+        var registeredStudent = await _studentService.RegisterStudentAsync(request);
+        return CreatedAtAction(nameof(GetById), new { studentSqid = registeredStudent.Sqid }, registeredStudent);
     }
 
     [HttpGet("{studentSqid}")]
     [Authorize]
     public async Task<IActionResult> GetById(string studentSqid)
     {
-        try
-        {
-            var student = await _studentService.GetStudentBySqidAsync(studentSqid);
-            return Ok(student);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
+        var student = await _studentService.GetStudentBySqidAsync(studentSqid);
+        return Ok(student);
     }
 
     [HttpGet("me")]
@@ -61,15 +43,8 @@ public class StudentController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            var student = await _studentService.GetCurrentStudentAsync(studentId);
-            return Ok(student);
-        }
-        catch (KeyNotFoundException)
-        {
-            return NotFound();
-        }
+        var student = await _studentService.GetCurrentStudentAsync(studentId);
+        return Ok(student);
     }
 
     private bool TryGetCurrentStudentId(out long studentId)

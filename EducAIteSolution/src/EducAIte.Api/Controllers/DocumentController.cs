@@ -28,15 +28,7 @@ public class DocumentController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        DocumentResponse? document;
-        try
-        {
-            document = await _documentService.GetDocumentByIdAsync(sqid, studentId, cancellationToken);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        DocumentResponse? document = await _documentService.GetDocumentByIdAsync(sqid, studentId, cancellationToken);
 
         if (document is null)
         {
@@ -59,23 +51,8 @@ public class DocumentController : ControllerBase
             return Forbid();
         }
 
-        try
-        {
-            var documents = await _documentService.GetDocumentsByStudentAsync(authenticatedStudentId, cancellationToken);
-            return Ok(documents);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        var documents = await _documentService.GetDocumentsByStudentAsync(authenticatedStudentId, cancellationToken);
+        return Ok(documents);
     }
 
     [HttpGet("me")]
@@ -98,27 +75,8 @@ public class DocumentController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            var createdDocument = await _documentService.CreateDocumentAsync(request, studentId, cancellationToken);
-            return CreatedAtAction(nameof(GetById), new { sqid = createdDocument.Sqid }, createdDocument);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        var createdDocument = await _documentService.CreateDocumentAsync(request, studentId, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { sqid = createdDocument.Sqid }, createdDocument);
     }
 
     [HttpPut("{sqid}")]
@@ -129,32 +87,13 @@ public class DocumentController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
+        bool isUpdated = await _documentService.UpdateDocumentAsync(sqid, request, studentId, cancellationToken);
+        if (!isUpdated)
         {
-            bool isUpdated = await _documentService.UpdateDocumentAsync(sqid, request, studentId, cancellationToken);
-            if (!isUpdated)
-            {
-                return NotFound();
-            }
+            return NotFound();
+        }
 
-            return NoContent();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (InvalidOperationException ex)
-        {
-            return Conflict(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        return NoContent();
     }
 
     [HttpDelete("{sqid}")]
@@ -165,15 +104,7 @@ public class DocumentController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        bool isDeleted;
-        try
-        {
-            isDeleted = await _documentService.DeleteDocumentAsync(sqid, studentId, cancellationToken);
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        bool isDeleted = await _documentService.DeleteDocumentAsync(sqid, studentId, cancellationToken);
 
         if (!isDeleted)
         {

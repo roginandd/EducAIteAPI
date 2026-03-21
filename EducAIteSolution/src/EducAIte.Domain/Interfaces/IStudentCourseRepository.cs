@@ -1,5 +1,7 @@
 using EducAIte.Domain.Entities;
 
+using EducAIte.Domain.Enum;
+
 namespace EducAIte.Domain.Interfaces;
 
 /// <summary>
@@ -20,7 +22,12 @@ public interface IStudentCourseRepository
     /// <summary>
     /// Returns all active enrollments for a student.
     /// </summary>
-    Task<IReadOnlyList<StudentCourse>> GetAllByStudentIdAsync(long studentId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<StudentCourse>> GetAllByStudentIdAsync(
+        long studentId,
+        Semester? semester = null,
+        int? schoolYearStart = null,
+        int? schoolYearEnd = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Returns all active enrollments for a study load owned by a student.
