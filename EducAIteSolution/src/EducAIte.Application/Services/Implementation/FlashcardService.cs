@@ -3,6 +3,10 @@ using EducAIte.Application.DTOs.Response;
 using EducAIte.Application.Extensions.MappingExtensions;
 using EducAIte.Application.Services.Interface;
 using EducAIte.Domain.Entities;
+using EducAIte.Domain.Exceptions.Base;
+using EducAIte.Domain.Exceptions.Document;
+using EducAIte.Domain.Exceptions.Flashcard;
+using EducAIte.Domain.Exceptions.Note;
 using EducAIte.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -45,7 +49,7 @@ public sealed class FlashcardService : IFlashcardService
 
         if (!_sqidService.TryDecode(flashcardSqid, out long flashcardId))
         {
-            throw new ArgumentException("FlashcardSqid is invalid.", nameof(flashcardSqid));
+            throw new InvalidSqidException(nameof(flashcardSqid));
         }
 
         Flashcard? flashcard = await _flashcardRepository.GetByIdAndStudentIdAsync(
@@ -79,7 +83,7 @@ public sealed class FlashcardService : IFlashcardService
 
         if (!_sqidService.TryDecode(documentSqid, out long documentId))
         {
-            throw new ArgumentException("DocumentSqid is invalid.", nameof(documentSqid));
+            throw new InvalidSqidException(nameof(documentSqid));
         }
 
         await EnsureDocumentOwnedAndExistsAsync(documentId, studentId, cancellationToken);
@@ -116,7 +120,7 @@ public sealed class FlashcardService : IFlashcardService
         Note? targetNote = await _noteRepository.GetTrackedByIdAsync(noteId, cancellationToken);
         if (targetNote is null)
         {
-            throw new ArgumentException("NoteSqid is invalid.", nameof(request.NoteSqid));
+            throw new NoteNotFoundException(noteId);
         }
 
         targetNote.AddFlashcard(flashcard);
@@ -142,7 +146,7 @@ public sealed class FlashcardService : IFlashcardService
         Note? targetNote = await _noteRepository.GetTrackedByIdAsync(noteId, cancellationToken);
         if (targetNote is null)
         {
-            throw new ArgumentException("NoteSqid is invalid.", nameof(request.Notesqid));
+            throw new NoteNotFoundException(noteId);
         }
 
         List<Flashcard> flashcardsToCreate = request.Flashcards.Select(fc => fc.ToEntity()).ToList();
@@ -168,7 +172,7 @@ public sealed class FlashcardService : IFlashcardService
 
         if (!_sqidService.TryDecode(flashcardSqid, out long flashcardId))
         {
-            throw new ArgumentException("FlashcardSqid is invalid.", nameof(flashcardSqid));
+            throw new InvalidSqidException(nameof(flashcardSqid));
         }
 
         Flashcard? existing = await _flashcardRepository.GetTrackedByIdAndStudentIdAsync(
@@ -193,7 +197,7 @@ public sealed class FlashcardService : IFlashcardService
             Note? targetNote = await _noteRepository.GetTrackedByIdAsync(noteId, cancellationToken);
             if (targetNote is null)
             {
-                throw new ArgumentException("NoteSqid is invalid.", nameof(request.NoteSqid));
+                throw new NoteNotFoundException(noteId);
             }
 
             targetNote.ReassignFlashcard(existing);
@@ -213,7 +217,7 @@ public sealed class FlashcardService : IFlashcardService
 
         if (!_sqidService.TryDecode(flashcardSqid, out long flashcardId))
         {
-            throw new ArgumentException("FlashcardSqid is invalid.", nameof(flashcardSqid));
+            throw new InvalidSqidException(nameof(flashcardSqid));
         }
 
         Flashcard? existing = await _flashcardRepository.GetTrackedByIdAndStudentIdAsync(
@@ -243,8 +247,10 @@ public sealed class FlashcardService : IFlashcardService
         bool exists = await _flashcardRepository.ExistsByIdAsync(flashcardId, cancellationToken);
         if (exists)
         {
-            throw new UnauthorizedAccessException("Flashcard does not belong to the authenticated student.");
+            throw new FlashcardForbiddenException();
         }
+
+        throw new FlashcardNotFoundException(flashcardId);
     }
 
     private async Task EnsureDocumentOwnedAndExistsAsync(
@@ -255,7 +261,7 @@ public sealed class FlashcardService : IFlashcardService
         Document? document = await _documentRepository.GetByIdAsync(documentId, cancellationToken);
         if (document is null)
         {
-            throw new ArgumentException("DocumentSqid is invalid.", nameof(documentId));
+            throw new DocumentNotFoundException(documentId);
         }
 
         await _resourceOwnershipService.EnsureDocumentOwnedByStudentAsync(documentId, studentId, cancellationToken);
@@ -269,7 +275,7 @@ public sealed class FlashcardService : IFlashcardService
         Note? note = await _noteRepository.GetByIdAsync(noteId, cancellationToken);
         if (note is null)
         {
-            throw new ArgumentException("NoteSqid is invalid.", nameof(noteId));
+            throw new NoteNotFoundException(noteId);
         }
 
         await _resourceOwnershipService.EnsureNoteOwnedByStudentAsync(noteId, studentId, cancellationToken);
@@ -279,7 +285,7 @@ public sealed class FlashcardService : IFlashcardService
     {
         if (!_sqidService.TryDecode(sqid, out long id))
         {
-            throw new ArgumentException($"{fieldName} is invalid.");
+            throw new InvalidSqidException(fieldName);
         }
 
         return id;
@@ -289,7 +295,7 @@ public sealed class FlashcardService : IFlashcardService
     {
         if (studentId <= 0)
         {
-            throw new ArgumentException("StudentId must be greater than zero.");
+            throw new FlashcardValidationException("StudentId must be greater than zero.");
         }
     }
 }
