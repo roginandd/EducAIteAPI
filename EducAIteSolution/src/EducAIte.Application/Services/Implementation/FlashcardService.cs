@@ -149,7 +149,9 @@ public sealed class FlashcardService : IFlashcardService
             throw new NoteNotFoundException(noteId);
         }
 
-        List<Flashcard> flashcardsToCreate = request.Flashcards.Select(fc => fc.ToEntity()).ToList();
+        List<Flashcard> flashcardsToCreate = request.Flashcards
+            .Select(fc => fc.ToEntity(noteId))
+            .ToList();
         
         targetNote.AddFlashcards(flashcardsToCreate);
 

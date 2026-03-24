@@ -2,9 +2,10 @@ using EducAIte.Application.DTOs.Request;
 using EducAIte.Application.DTOs.Response;
 using EducAIte.Application.Services.Interface;
 using EducAIte.Domain.Entities;
-using Mapster;
 
 namespace EducAIte.Application.Extensions.MappingExtensions;
+
+using Mapster;
 
 public static class FlashcardMappingExtensions
 {
@@ -34,9 +35,13 @@ public static class FlashcardMappingExtensions
     }
 
     public static Flashcard ToEntity(
-        this CreateBulkFlashcardItem item
+        this CreateBulkFlashcardItem item,
+        long noteId
     )
     {
-        return item.Adapt<Flashcard>();
+        return new Flashcard(
+            item.Question,
+            item.Answer,
+            noteId);
     }
 }

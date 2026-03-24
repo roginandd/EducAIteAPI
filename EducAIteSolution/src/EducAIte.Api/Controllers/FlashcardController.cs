@@ -112,6 +112,18 @@ public class FlashcardController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { sqid = created.Sqid }, created);
     }
 
+    [HttpPost("bulk")]
+    public async Task<IActionResult> CreateBulk([FromBody] CreateBulkFlashcardsRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentStudentId(out long studentId))
+        {
+            return Unauthorized(new { message = "Student ID claim is missing or invalid." });
+        }
+
+        IReadOnlyList<FlashcardResponse> created = await _flashcardService.CreateBulkAsync(request, studentId, cancellationToken);
+        return Ok(created);
+    }
+
     [HttpPut("{sqid}")]
     public async Task<IActionResult> Update(string sqid, [FromBody] UpdateFlashcardRequest request, CancellationToken cancellationToken)
     {
