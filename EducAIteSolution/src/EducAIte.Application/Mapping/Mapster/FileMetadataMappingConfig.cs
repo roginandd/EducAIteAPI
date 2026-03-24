@@ -17,6 +17,7 @@ public sealed class FileMetadataMappingConfig : IRegister
     public void Register(TypeAdapterConfig config)
     {
         config.NewConfig<FileMetadata, FileMetadataResponse>()
+            .Map(dest => dest.FileMetadataId, src => src.FileMetaDataId)
             .Map(dest => dest.Sqid, src => GetSqidService().Encode(src.FileMetaDataId))
             .Map(dest => dest.StudentSqid, src => GetSqidService().Encode(src.StudentId));
     }

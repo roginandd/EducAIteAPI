@@ -3,7 +3,6 @@ using EducAIte.Application.DTOs.Response;
 using EducAIte.Application.Services.Interface;
 using EducAIte.Domain.Entities;
 using EducAIte.Domain.Enum;
-using EducAIte.Domain.ValueObjects;
 using Mapster;
 
 namespace EducAIte.Application.Extensions.MappingExtensions;
@@ -26,17 +25,6 @@ public static class StudyLoadMappingExtensions
     }
 
     /// <summary>
-    /// Maps a StudyLoad entity to a StudyLoadDto.
-    /// </summary>
-    public static StudyLoadDto ToDto(this StudyLoad studyLoad, ISqidService sqidService)
-    {
-        return studyLoad
-            .BuildAdapter()
-            .AddParameters("sqidService", sqidService)
-            .AdaptToType<StudyLoadDto>();
-    }
-
-    /// <summary>
     /// Maps a StudyLoadCreateRequest to a StudyLoad entity.
     /// </summary>
     public static StudyLoad ToEntity(this StudyLoadCreateRequest dto, long studentId) =>
@@ -52,24 +40,56 @@ public static class StudyLoadMappingExtensions
         };
 
     /// <summary>
-    /// Maps a StudyLoadUpdateRequest into an existing StudyLoad entity.
+    /// Applies a study load update request to an existing entity.
     /// </summary>
-    // public static StudyLoad ToEntity(this StudyLoadUpdateRequest dto, StudyLoad studyLoad)
-    // {
-    //     if (dto.SchoolYearStart.HasValue && dto.SchoolYearEnd.HasValue)
-    //     {
-    //         studyLoad.SchoolYearStart = dto.SchoolYearStart.Value;
-    //         studyLoad.SchoolYearEnd = dto.SchoolYearEnd.Value;
-    //     }
+    public static void ApplyToEntity(this StudyLoadUpdateRequest dto, StudyLoad studyLoad)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+        ArgumentNullException.ThrowIfNull(studyLoad);
 
-    //     if (dto.Semester.HasValue)
-    //     {
-    //         studyLoad.Semester = NormalizeSemester(dto.Semester.Value);
-    //     }
+        studyLoad.SchoolYearStart = dto.SchoolYearStart;
+        studyLoad.SchoolYearEnd = dto.SchoolYearEnd;
+        studyLoad.Semester = NormalizeSemester(dto.Semester);
+        studyLoad.UpdatedAt = DateTime.UtcNow;
+    }
 
-    //     studyLoad.UpdatedAt = DateTime.UtcNow;
-    //     return studyLoad;
-    // }
+    /// <summary>
+    /// Maps a study load create request into the uploaded file metadata entity it owns.
+    /// </summary>
+    public static FileMetadata ToFileMetadataEntity(this StudyLoadCreateRequest dto, long studentId, string storageKey)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+        ArgumentException.ThrowIfNullOrWhiteSpace(storageKey);
+
+        return new FileMetadata
+        {
+            FileName = dto.StudyLoadDocument.FileName,
+            FileExtension = Path.GetExtension(dto.StudyLoadDocument.FileName),
+            ContentType = dto.StudyLoadDocument.ContentType,
+            StorageKey = storageKey,
+            FileSizeInBytes = dto.StudyLoadDocument.Length,
+            UploadedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow,
+            StudentId = studentId
+        };
+    }
+
+    /// <summary>
+    /// Applies a study load update request to the uploaded file metadata entity it owns.
+    /// </summary>
+    public static void ApplyToFileMetadataEntity(this StudyLoadUpdateRequest dto, FileMetadata fileMetadata, string storageKey)
+    {
+        ArgumentNullException.ThrowIfNull(dto);
+        ArgumentNullException.ThrowIfNull(fileMetadata);
+        ArgumentException.ThrowIfNullOrWhiteSpace(storageKey);
+
+        fileMetadata.FileName = dto.StudyLoadDocument.FileName;
+        fileMetadata.FileExtension = Path.GetExtension(dto.StudyLoadDocument.FileName);
+        fileMetadata.ContentType = dto.StudyLoadDocument.ContentType;
+        fileMetadata.StorageKey = storageKey;
+        fileMetadata.FileSizeInBytes = dto.StudyLoadDocument.Length;
+        fileMetadata.UpdatedAt = DateTime.UtcNow;
+    }
 
     private static Semester NormalizeSemester(int semester)
     {

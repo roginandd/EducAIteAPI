@@ -347,11 +347,11 @@ public sealed class StudentCourseService : IStudentCourseService
 
     private async Task<StudyLoad> GetOwnedStudyLoadOrThrowAsync(long studyLoadId, long studentId, CancellationToken cancellationToken)
     {
-        // StudyLoad? studyLoad = await _studyLoadRepository.GetByIdAndStudentIdAsync(studyLoadId, studentId, cancellationToken);
-        // if (studyLoad is not null)
-        // {
-        //     return studyLoad;
-        // }
+        StudyLoad? studyLoad = await _studyLoadRepository.GetByIdAndStudentIdAsync(studyLoadId, studentId, cancellationToken);
+        if (studyLoad is not null)
+        {
+            return studyLoad;
+        }
 
         StudyLoad? existingStudyLoad = await _studyLoadRepository.GetStudyLoadByIdAsync(studyLoadId, cancellationToken);
         if (existingStudyLoad is not null)

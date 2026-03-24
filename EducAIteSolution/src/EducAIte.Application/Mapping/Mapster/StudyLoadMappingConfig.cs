@@ -1,6 +1,7 @@
 namespace EducAIte.Application.Mapping.Configurations;
 
 using EducAIte.Application.DTOs.Response;
+using EducAIte.Application.Extensions.MappingExtensions;
 using EducAIte.Application.Services.Interface;
 using EducAIte.Domain.Entities;
 using Mapster;
@@ -20,17 +21,13 @@ public sealed class StudyLoadMappingConfig : IRegister
             .Map(dest => dest.Sqid, src => GetSqidService().Encode(src.StudyLoadId))
             .Map(dest => dest.StudentSqid, src => GetSqidService().Encode(src.StudentId))
             .Map(dest => dest.FileMetadataSqid, src => src.FileMetadataId > 0 ? GetSqidService().Encode(src.FileMetadataId) : string.Empty)
+            .Map(dest => dest.FileMetadata, src => src.FileMetadata.ToResponse(GetSqidService()))
             .Map(dest => dest.SchoolYearStart, src => src.SchoolYearStart)
             .Map(dest => dest.SchoolYearEnd, src => src.SchoolYearEnd)
-            .Map(dest => dest.Semester, src => src.Semester.ToString());
+            .Map(dest => dest.Semester, src => src.Semester.ToString())
+            .Map(dest => dest.Courses, src => src.Courses.Select(course => course.ToResponse()));
 
-        config.NewConfig<StudyLoad, StudyLoadDto>()
-            .Map(dest => dest.Sqid, src => GetSqidService().Encode(src.StudyLoadId))
-            .Map(dest => dest.StudentSqid, src => GetSqidService().Encode(src.StudentId))
-            .Map(dest => dest.FileMetadataSqid, src => src.FileMetadataId > 0 ? GetSqidService().Encode(src.FileMetadataId) : string.Empty)
-            .Map(dest => dest.SchoolYearStart, src => src.SchoolYearStart)
-            .Map(dest => dest.SchoolYearEnd, src => src.SchoolYearEnd)
-            .Map(dest => dest.Semester, src => src.Semester.ToString());
+        
     }
 
     private static ISqidService GetSqidService()

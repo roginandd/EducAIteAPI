@@ -68,25 +68,4 @@ public record StudyLoadResponse
     public DateTime UpdatedAt { get; init; }
 }
 
-/// <summary>
-/// Data Transfer Object for detailed study load information.
-/// Used when retrieving studyload data in application layer.
-/// </summary>
-public record StudyLoadDto
-{
-    public string Sqid { get; init; } = string.Empty;
-    public long StudyLoadId { get; init; }
-    public string StudentSqid { get; init; } = string.Empty;
-    public long StudentId { get; init; }
-    public string FileMetadataSqid { get; init; } = string.Empty;
-    public FileMetadataResponse? FileMetadata { get; init; }
-    public string SchoolYearStart { get; init; } = string.Empty;
-    public string SchoolYearEnd { get; init; } = string.Empty;
-    public string Semester { get; init; } = string.Empty;
-    public IEnumerable<CourseResponse> Courses { get; init; } = new List<CourseResponse>();
-    public int TotalUnits { get; init; }
-    public DateTime CreatedAt { get; init; }
-    public DateTime UpdatedAt { get; init; }
-}
-
 

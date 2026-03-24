@@ -31,7 +31,7 @@ public class StudyLoadService(
     private readonly IAWSService _awsService = awsService;
     private readonly ISqidService _sqidService = sqidService;
     private readonly IUnitOfWork _unitOfWork = unitOfWork;
-    public async Task<StudyLoadDto> AddStudyLoadAsync(StudyLoadCreateRequest studyLoadCreateDto, CancellationToken cancellationToken = default)
+    public async Task<StudyLoadResponse> AddStudyLoadAsync(StudyLoadCreateRequest studyLoadCreateDto, CancellationToken cancellationToken = default)
     {
 
         StudyLoad studyLoad = studyLoadCreateDto.ToEntity(_sqidService.TryDecode(studyLoadCreateDto.StudentSqid, out var studentId) ? studentId : throw new ArgumentException("Invalid Student Sqid"));
@@ -40,17 +40,7 @@ public class StudyLoadService(
 
         string path = await _awsService.UploadStudyLoad(studyLoadCreateDto, cancellationToken);
 
-        FileMetadata fileMetadata = new()
-        {
-          FileName = studyLoadCreateDto.StudyLoadDocument.FileName,
-          FileExtension = Path.GetExtension(studyLoadCreateDto.StudyLoadDocument.FileName),
-          ContentType = studyLoadCreateDto.StudyLoadDocument.ContentType,
-          StorageKey = path,
-          FileSizeInBytes = studyLoadCreateDto.StudyLoadDocument.Length,
-          UploadedAt = DateTime.UtcNow,
-          UpdatedAt = DateTime.UtcNow,
-          StudentId = studentId  
-        };
+        FileMetadata fileMetadata = studyLoadCreateDto.ToFileMetadataEntity(studentId, path);
 
         FileMetadata addedFileMetadata = await _fileMetadataRepository.AddFileMetadataAsync(fileMetadata, cancellationToken);
 
@@ -63,27 +53,55 @@ public class StudyLoadService(
 
         await _unitOfWork.CommitTransactionAsync(cancellationToken);
 
-        return studyLoad.ToDto(_sqidService);
+        return studyLoad.ToResponse(_sqidService);
 
+    }
+
+    public Task<StudyLoadResponse?> GetByIdAndStudentIdAsync(string studentSqid, string studyLoadSqid, CancellationToken cancellationToken = default)
+    {
+        _sqidService.TryDecode(studentSqid, out var studentId);
+        _sqidService.TryDecode(studyLoadSqid, out var studyLoadId);
+
+        return _studyLoadRepository.GetByIdAndStudentIdAsync(studentId, studyLoadId, cancellationToken)
+            .ContinueWith(task => task.Result?.ToResponse(_sqidService), cancellationToken);
     }
 
     public Task<bool> DeleteStudyLoadAsync(string studyLoadSqid, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        _sqidService.TryDecode(studyLoadSqid, out var studyLoadId);
+        return _studyLoadRepository.DeleteStudyLoadAsync(studyLoadId, cancellationToken);
     }
 
-    public Task<IEnumerable<StudyLoadDto>> GetAllStudyLoadsByStudentIdAsync(string studentSqid, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<StudyLoadResponse>> GetAllStudyLoadsByStudentIdAsync(string studentSqid, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        _sqidService.TryDecode(studentSqid, out var studentId);
+        
+        var studyLoads = await _studyLoadRepository.GetAllStudyLoadsByStudentIdAsync(studentId, cancellationToken);
+        return studyLoads.Select(sl => sl.ToResponse(_sqidService));
     }
 
-    public Task<StudyLoadDto?> GetStudyLoadByIdAsync(string studyLoadSqid, CancellationToken cancellationToken = default)
+    public Task<StudyLoadResponse?> GetStudyLoadByIdAsync(string studyLoadSqid, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        _sqidService.TryDecode(studyLoadSqid, out var studyLoadId);
+        return _studyLoadRepository.GetStudyLoadByIdAsync(studyLoadId, cancellationToken)
+            .ContinueWith(task => task.Result?.ToResponse(_sqidService), cancellationToken);
     }
 
-    public Task<StudyLoadDto> UpdateStudyLoadAsync(StudyLoadUpdateRequest studyLoadUpdateDto, CancellationToken cancellationToken = default)
+    public Task<StudyLoadResponse> UpdateStudyLoadAsync(StudyLoadUpdateRequest studyLoadUpdateDto, CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        _sqidService.TryDecode(studyLoadUpdateDto.StudyLoadSqid, out var studyLoadId);
+        _sqidService.TryDecode(studyLoadUpdateDto.StudentSqid, out var studentId);
+
+        return _studyLoadRepository.GetByIdAndStudentIdAsync(studentId, studyLoadId, cancellationToken)
+            .ContinueWith(task =>
+            {
+                StudyLoad? existingStudyLoad = task.Result ?? throw new KeyNotFoundException("Study load not found.");
+                // Apply updates from DTO to entity
+
+                // Buhatonon: Handle course associations here
+
+                return _studyLoadRepository.UpdateStudyLoadAsync(existingStudyLoad, cancellationToken)
+                    .ContinueWith(updateTask => updateTask.Result.ToResponse(_sqidService), cancellationToken);
+            }, cancellationToken).Unwrap();   
     }
 }
