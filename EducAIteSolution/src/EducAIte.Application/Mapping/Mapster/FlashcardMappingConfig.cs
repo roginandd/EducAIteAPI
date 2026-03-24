@@ -43,12 +43,6 @@ public sealed class FlashcardMappingConfig : IRegister
             .Map(dest => dest.NextReviewAt, src => GetAvailableAt());
 
 
-        config.NewConfig<CreateBulkFlashcardItem, Flashcard>()
-            .Map(dest => dest.Question, src => src.Question)
-            .Map(dest => dest.Answer, src => src.Answer);
-
-        
-            
     }
 
     private static ISqidService GetSqidService()

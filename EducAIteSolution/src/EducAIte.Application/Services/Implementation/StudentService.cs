@@ -2,6 +2,8 @@ using EducAIte.Application.DTOs.Request;
 using EducAIte.Application.DTOs.Response;
 using EducAIte.Application.Extensions.MappingExtensions;
 using EducAIte.Application.Services.Interface;
+using EducAIte.Domain.Exceptions.Base;
+using EducAIte.Domain.Exceptions.Student;
 using EducAIte.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -24,18 +26,18 @@ public class StudentService : IStudentService
     {
         if (string.IsNullOrWhiteSpace(request.Password))
         {
-            throw new ArgumentException("Password is required.", nameof(request));
+            throw new StudentValidationException("Password is required.");
         }
 
         if (request.Password != request.ConfirmPassword)
         {
-            throw new ArgumentException("Password and ConfirmPassword do not match.", nameof(request));
+            throw new StudentValidationException("Password and ConfirmPassword do not match.");
         }
 
         var existingStudent = await _studentRepository.GetByStudentIdNumberAsync(request.StudentIdNumber);
         if (existingStudent is not null)
         {
-            throw new InvalidOperationException("Student ID Number is already registered.");
+            throw new StudentAlreadyExistsException("Student ID Number is already registered.");
         }
 
         var student = request.toEntity();
@@ -51,7 +53,7 @@ public class StudentService : IStudentService
     {
         if (!_sqidService.TryDecode(studentSqid, out long studentId))
         {
-            throw new KeyNotFoundException($"Student with sqid {studentSqid} not found.");
+            throw new InvalidSqidException($"Student sqid '{studentSqid}' is invalid.");
         }
 
         return await GetCurrentStudentAsync(studentId);
@@ -62,7 +64,7 @@ public class StudentService : IStudentService
         var student = await _studentRepository.GetByStudentIdAsync(studentId);
         if (student is null)
         {
-            throw new KeyNotFoundException($"Student with ID {studentId} not found.");
+            throw new StudentNotFoundException($"Student with ID {studentId} not found.");
         }
 
         return student.ToDTO(_sqidService);

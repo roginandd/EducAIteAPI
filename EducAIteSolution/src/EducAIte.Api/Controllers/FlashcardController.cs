@@ -30,19 +30,7 @@ public class FlashcardController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        FlashcardResponse? flashcard;
-        try
-        {
-            flashcard = await _flashcardService.GetBySqidAsync(sqid, studentId, cancellationToken);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        FlashcardResponse? flashcard = await _flashcardService.GetBySqidAsync(sqid, studentId, cancellationToken);
 
         if (flashcard is null)
         {
@@ -84,15 +72,8 @@ public class FlashcardController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            IReadOnlyList<FlashcardReviewItemResponse> batch = await _studentFlashcardService.GetNextBatchAsync(studentId, request, cancellationToken);
-            return Ok(batch);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
+        IReadOnlyList<FlashcardReviewItemResponse> batch = await _studentFlashcardService.GetNextBatchAsync(studentId, request, cancellationToken);
+        return Ok(batch);
     }
 
     [HttpGet("document/{documentSqid}")]
@@ -103,19 +84,8 @@ public class FlashcardController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            IReadOnlyList<FlashcardResponse> flashcards = await _flashcardService.GetByDocumentAsync(documentSqid, studentId, cancellationToken);
-            return Ok(flashcards);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        IReadOnlyList<FlashcardResponse> flashcards = await _flashcardService.GetByDocumentAsync(documentSqid, studentId, cancellationToken);
+        return Ok(flashcards);
     }
 
     [HttpGet("note/{noteSqid}")]
@@ -126,19 +96,8 @@ public class FlashcardController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            IReadOnlyList<FlashcardResponse> flashcards = await _flashcardService.GetByNoteAsync(noteSqid, studentId, cancellationToken);
-            return Ok(flashcards);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        IReadOnlyList<FlashcardResponse> flashcards = await _flashcardService.GetByNoteAsync(noteSqid, studentId, cancellationToken);
+        return Ok(flashcards);
     }
 
     [HttpPost]
@@ -149,19 +108,20 @@ public class FlashcardController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
+        FlashcardResponse created = await _flashcardService.CreateAsync(request, studentId, cancellationToken);
+        return CreatedAtAction(nameof(GetById), new { sqid = created.Sqid }, created);
+    }
+
+    [HttpPost("bulk")]
+    public async Task<IActionResult> CreateBulk([FromBody] CreateBulkFlashcardsRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentStudentId(out long studentId))
         {
-            FlashcardResponse created = await _flashcardService.CreateAsync(request, studentId, cancellationToken);
-            return CreatedAtAction(nameof(GetById), new { sqid = created.Sqid }, created);
+            return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+
+        IReadOnlyList<FlashcardResponse> created = await _flashcardService.CreateBulkAsync(request, studentId, cancellationToken);
+        return Ok(created);
     }
 
     [HttpPut("{sqid}")]
@@ -172,24 +132,13 @@ public class FlashcardController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
+        bool updated = await _flashcardService.UpdateAsync(sqid, request, studentId, cancellationToken);
+        if (!updated)
         {
-            bool updated = await _flashcardService.UpdateAsync(sqid, request, studentId, cancellationToken);
-            if (!updated)
-            {
-                return NotFound();
-            }
+            return NotFound();
+        }
 
-            return NoContent();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        return NoContent();
     }
 
     [HttpDelete("{sqid}")]
@@ -200,19 +149,7 @@ public class FlashcardController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        bool deleted;
-        try
-        {
-            deleted = await _flashcardService.DeleteAsync(sqid, studentId, cancellationToken);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        bool deleted = await _flashcardService.DeleteAsync(sqid, studentId, cancellationToken);
 
         if (!deleted)
         {
@@ -230,23 +167,8 @@ public class FlashcardController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            FlashcardAttemptResultResponse result = await _studentFlashcardService.SubmitAttemptAsync(sqid, request, studentId, cancellationToken);
-            return Ok(result);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        FlashcardAttemptResultResponse result = await _studentFlashcardService.SubmitAttemptAsync(sqid, request, studentId, cancellationToken);
+        return Ok(result);
     }
 
     [HttpGet("{sqid}/progress")]
@@ -257,28 +179,13 @@ public class FlashcardController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
+        StudentFlashcardProgressResponse? progress = await _studentFlashcardService.GetProgressAsync(sqid, studentId, cancellationToken);
+        if (progress is null)
         {
-            StudentFlashcardProgressResponse? progress = await _studentFlashcardService.GetProgressAsync(sqid, studentId, cancellationToken);
-            if (progress is null)
-            {
-                return NotFound();
-            }
+            return NotFound();
+        }
 
-            return Ok(progress);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        return Ok(progress);
     }
 
     [HttpPost("{sqid}/progress/start")]
@@ -289,23 +196,8 @@ public class FlashcardController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            StudentFlashcardProgressResponse progress = await _studentFlashcardService.StartTrackingAsync(sqid, studentId, cancellationToken);
-            return Ok(progress);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        StudentFlashcardProgressResponse progress = await _studentFlashcardService.StartTrackingAsync(sqid, studentId, cancellationToken);
+        return Ok(progress);
     }
 
     [HttpPost("{sqid}/progress/correct")]
@@ -316,23 +208,8 @@ public class FlashcardController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            StudentFlashcardProgressResponse progress = await _studentFlashcardService.RecordCorrectAsync(sqid, studentId, cancellationToken);
-            return Ok(progress);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        StudentFlashcardProgressResponse progress = await _studentFlashcardService.RecordCorrectAsync(sqid, studentId, cancellationToken);
+        return Ok(progress);
     }
 
     [HttpPost("{sqid}/progress/wrong")]
@@ -343,23 +220,8 @@ public class FlashcardController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            StudentFlashcardProgressResponse progress = await _studentFlashcardService.RecordWrongAsync(sqid, studentId, cancellationToken);
-            return Ok(progress);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        StudentFlashcardProgressResponse progress = await _studentFlashcardService.RecordWrongAsync(sqid, studentId, cancellationToken);
+        return Ok(progress);
     }
 
     [HttpPost("{sqid}/progress/reset")]
@@ -370,23 +232,8 @@ public class FlashcardController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            StudentFlashcardProgressResponse progress = await _studentFlashcardService.ResetProgressAsync(sqid, studentId, cancellationToken);
-            return Ok(progress);
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        StudentFlashcardProgressResponse progress = await _studentFlashcardService.ResetProgressAsync(sqid, studentId, cancellationToken);
+        return Ok(progress);
     }
 
     [HttpDelete("{sqid}/progress")]
@@ -397,23 +244,8 @@ public class FlashcardController : ControllerBase
             return Unauthorized(new { message = "Student ID claim is missing or invalid." });
         }
 
-        try
-        {
-            await _studentFlashcardService.ArchiveProgressAsync(sqid, studentId, cancellationToken);
-            return NoContent();
-        }
-        catch (ArgumentException ex)
-        {
-            return BadRequest(new { message = ex.Message });
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new { message = ex.Message });
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
-        }
+        await _studentFlashcardService.ArchiveProgressAsync(sqid, studentId, cancellationToken);
+        return NoContent();
     }
 
     private bool TryGetCurrentStudentId(out long studentId)

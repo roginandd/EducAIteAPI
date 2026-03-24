@@ -1,4 +1,5 @@
 using EducAIte.Domain.Entities;
+using EducAIte.Domain.Enum;
 using EducAIte.Domain.Interfaces;
 using EducAIte.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
@@ -42,13 +43,32 @@ public sealed class StudentCourseRepository : IStudentCourseRepository
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<StudentCourse>> GetAllByStudentIdAsync(long studentId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<StudentCourse>> GetAllByStudentIdAsync(
+        long studentId,
+        Semester? semester = null,
+        int? schoolYearStart = null,
+        int? schoolYearEnd = null,
+        CancellationToken cancellationToken = default)
     {
-        return await CreateBaseQuery()
+        IQueryable<StudentCourse> query = CreateBaseQuery()
             .AsNoTracking()
             .Where(studentCourse => !studentCourse.IsDeleted)
             .Where(studentCourse => !studentCourse.StudyLoad.IsDeleted)
-            .Where(studentCourse => studentCourse.StudyLoad.StudentId == studentId)
+            .Where(studentCourse => studentCourse.StudyLoad.StudentId == studentId);
+
+        if (semester.HasValue)
+        {
+            query = query.Where(studentCourse => studentCourse.StudyLoad.Semester == semester.Value);
+        }
+
+        if (schoolYearStart.HasValue && schoolYearEnd.HasValue)
+        {
+            query = query.Where(studentCourse =>
+                studentCourse.StudyLoad.SchoolYearStart == schoolYearStart.Value &&
+                studentCourse.StudyLoad.SchoolYearEnd == schoolYearEnd.Value);
+        }
+
+        return await query
             .OrderByDescending(studentCourse => studentCourse.UpdatedAt)
             .ToListAsync(cancellationToken);
     }

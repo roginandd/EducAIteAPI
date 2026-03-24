@@ -5,6 +5,9 @@ using EducAIte.Application.Interfaces;
 using EducAIte.Application.Services.Interface;
 using EducAIte.Domain.Entities;
 using EducAIte.Domain.Enum;
+using EducAIte.Domain.Exceptions.Base;
+using EducAIte.Domain.Exceptions.Grade;
+using EducAIte.Domain.Exceptions.StudentCourse;
 using EducAIte.Domain.Interfaces;
 
 namespace EducAIte.Application.Services.Implementation;
@@ -53,7 +56,7 @@ public sealed class StudentCourseService : IStudentCourseService
 
         if (!_sqidService.TryDecode(studentCourseSqid, out long studentCourseId))
         {
-            throw new ArgumentException("StudentCourseSqid is invalid.", nameof(studentCourseSqid));
+            throw new InvalidSqidException(nameof(studentCourseSqid));
         }
 
         StudentCourse? studentCourse = await _studentCourseRepository.GetByIdAndStudentIdAsync(studentCourseId, studentId, cancellationToken);
@@ -65,18 +68,30 @@ public sealed class StudentCourseService : IStudentCourseService
         bool exists = await _studentCourseRepository.ExistsByIdAsync(studentCourseId, cancellationToken);
         if (exists)
         {
-            throw new UnauthorizedAccessException("Student course does not belong to the authenticated student.");
+            throw new StudentCourseForbiddenException();
         }
 
         return null;
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<StudentCourseResponse>> GetMineAsync(long studentId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<StudentCourseResponse>> GetMineAsync(
+        long studentId,
+        GetStudentCoursesRequest? request = null,
+        CancellationToken cancellationToken = default)
     {
         EnsureStudentIdIsValid(studentId);
+        request ??= new GetStudentCoursesRequest();
 
-        IReadOnlyList<StudentCourse> studentCourses = await _studentCourseRepository.GetAllByStudentIdAsync(studentId, cancellationToken);
+        Semester? semester = NormalizeSemester(request.Semester);
+        ValidateSchoolYear(request.SchoolYearStart, request.SchoolYearEnd);
+
+        IReadOnlyList<StudentCourse> studentCourses = await _studentCourseRepository.GetAllByStudentIdAsync(
+            studentId,
+            semester,
+            request.SchoolYearStart,
+            request.SchoolYearEnd,
+            cancellationToken);
         return studentCourses
             .Select(studentCourse => studentCourse.ToResponse(_sqidService))
             .ToList();
@@ -89,7 +104,7 @@ public sealed class StudentCourseService : IStudentCourseService
 
         if (!_sqidService.TryDecode(studyLoadSqid, out long studyLoadId))
         {
-            throw new ArgumentException("StudyLoadSqid is invalid.", nameof(studyLoadSqid));
+            throw new InvalidSqidException(nameof(studyLoadSqid));
         }
 
         await GetOwnedStudyLoadOrThrowAsync(studyLoadId, studentId, cancellationToken);
@@ -126,7 +141,7 @@ public sealed class StudentCourseService : IStudentCourseService
             {
                 if (!existing.IsDeleted)
                 {
-                    throw new InvalidOperationException("The course is already enrolled for the selected study load.");
+                    throw new CourseAlreadyEnrolledException();
                 }
 
                 existing.Restore();
@@ -176,7 +191,7 @@ public sealed class StudentCourseService : IStudentCourseService
 
         if (!_sqidService.TryDecode(studentCourseSqid, out long studentCourseId))
         {
-            throw new ArgumentException("StudentCourseSqid is invalid.", nameof(studentCourseSqid));
+            throw new InvalidSqidException(nameof(studentCourseSqid));
         }
 
         StudentCourse? studentCourse = await _studentCourseRepository.GetByIdAndStudentIdAsync(studentCourseId, studentId, cancellationToken);
@@ -185,7 +200,7 @@ public sealed class StudentCourseService : IStudentCourseService
             bool exists = await _studentCourseRepository.ExistsByIdAsync(studentCourseId, cancellationToken);
             if (exists)
             {
-                throw new UnauthorizedAccessException("Student course does not belong to the authenticated student.");
+                throw new StudentCourseForbiddenException();
             }
 
             return false;
@@ -353,20 +368,25 @@ public sealed class StudentCourseService : IStudentCourseService
             return studyLoad;
         }
 
-        StudyLoad? existingStudyLoad = await _studyLoadRepository.GetStudyLoadByIdAsync(studyLoadId, cancellationToken);
-        if (existingStudyLoad is not null)
+        StudyLoad? studyLoad = await _studyLoadRepository.GetStudyLoadByIdAsync(studyLoadId, cancellationToken);
+        if (studyLoad is null)
         {
-            throw new UnauthorizedAccessException("Study load does not belong to the authenticated student.");
+            throw new StudyLoadNotFoundException(studyLoadId);
         }
 
-        throw new KeyNotFoundException($"Study load with ID {studyLoadId} was not found.");
+        if (studyLoad.StudentId != studentId)
+        {
+            throw new StudyLoadForbiddenException();
+        }
+
+        return studyLoad;
     }
 
     private async Task<StudentCourse> GetOwnedStudentCourseBySqidOrThrowAsync(string studentCourseSqid, long studentId, CancellationToken cancellationToken)
     {
         if (!_sqidService.TryDecode(studentCourseSqid, out long studentCourseId))
         {
-            throw new ArgumentException("StudentCourseSqid is invalid.", nameof(studentCourseSqid));
+            throw new InvalidSqidException(nameof(studentCourseSqid));
         }
 
         StudentCourse? studentCourse = await _studentCourseRepository.GetByIdAndStudentIdAsync(studentCourseId, studentId, cancellationToken);
@@ -378,10 +398,10 @@ public sealed class StudentCourseService : IStudentCourseService
         bool exists = await _studentCourseRepository.ExistsByIdAsync(studentCourseId, cancellationToken);
         if (exists)
         {
-            throw new UnauthorizedAccessException("Student course does not belong to the authenticated student.");
+            throw new StudentCourseForbiddenException();
         }
 
-        throw new KeyNotFoundException("Student course was not found.");
+        throw new StudentCourseNotFoundException(studentCourseSqid);
     }
 
     private async Task<Course> GetCourseOrThrowAsync(long courseId, CancellationToken cancellationToken)
@@ -401,7 +421,7 @@ public sealed class StudentCourseService : IStudentCourseService
     {
         if (!_sqidService.TryDecode(sqid, out long id))
         {
-            throw new ArgumentException($"{paramName} is invalid.", paramName);
+            throw new InvalidSqidException(paramName);
         }
 
         return id;
@@ -446,7 +466,7 @@ public sealed class StudentCourseService : IStudentCourseService
 
         if (!isGradeTypeValid)
         {
-            throw new ArgumentException("Grade type is invalid.", nameof(gradeType));
+            throw new InvalidGradeTypeException();
         }
     }
 
@@ -455,6 +475,37 @@ public sealed class StudentCourseService : IStudentCourseService
         if (studentId <= 0)
         {
             throw new ArgumentException("StudentId must be greater than zero.");
+        }
+    }
+
+    private static Semester? NormalizeSemester(int? semester)
+    {
+        if (!semester.HasValue)
+        {
+            return null;
+        }
+
+        if (!Enum.IsDefined(typeof(Semester), semester.Value))
+        {
+            throw new ArgumentException("Semester is invalid.", nameof(semester));
+        }
+
+        return (Semester)semester.Value;
+    }
+
+    private static void ValidateSchoolYear(int? schoolYearStart, int? schoolYearEnd)
+    {
+        bool hasSchoolYearStart = schoolYearStart.HasValue;
+        bool hasSchoolYearEnd = schoolYearEnd.HasValue;
+
+        if (hasSchoolYearStart != hasSchoolYearEnd)
+        {
+            throw new ArgumentException("SchoolYearStart and SchoolYearEnd must both be provided when filtering by school year.");
+        }
+
+        if (hasSchoolYearStart && schoolYearEnd != schoolYearStart + 1)
+        {
+            throw new ArgumentException("School year is invalid.");
         }
     }
 
