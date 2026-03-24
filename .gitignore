@@ -2,3 +2,7 @@ EducAIteSolution/obj/Debug/net10.0/EducAIteSolution.GeneratedMSBuildEditorConfig
 AGENTS.md
 *.pem
 .dotnet-cli/*
+
+.cocoindex_code/*
+.cocoindex
+docs/*
