@@ -18,6 +18,7 @@ public static class DependencyInjection
       services.AddScoped<IAuthService, AuthService>();
       services.AddScoped<ICourseService, CourseService>();
       services.AddScoped<IDocumentService, DocumentService>();
+      services.AddScoped<IFolderService, FolderService>();
       services.AddScoped<IFlashcardService, FlashcardService>();
       services.AddScoped<INoteService, NoteService>();
       services.AddScoped<INoteOrderingService, NoteOrderingService>();
@@ -33,6 +34,7 @@ public static class DependencyInjection
       services.AddScoped<ICourseRepository, CourseRepository>();
       services.AddScoped<IStudyLoadRepository, StudyLoadRepository>();
       services.AddScoped<IDocumentRepository, DocumentRepository>();
+      services.AddScoped<IFolderRepository, FolderRepository>();
       services.AddScoped<IFlashcardRepository, FlashcardRepository>();
       services.AddScoped<INoteRepository, NoteRepository>();
       services.AddScoped<IStudentCourseRepository, StudentCourseRepository>();
