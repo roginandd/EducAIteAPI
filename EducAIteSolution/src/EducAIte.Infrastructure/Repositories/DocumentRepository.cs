@@ -64,6 +64,24 @@ public class DocumentRepository : IDocumentRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Document>> GetAllByFolderIdAndStudentIdAsync(
+        long folderId,
+        long studentId,
+        CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Documents
+            .AsNoTracking()
+            .Include(document => document.Folder)
+            .Include(document => document.FileMetadata)
+            .Where(document =>
+                document.FolderId == folderId &&
+                document.Folder.StudentId == studentId &&
+                !document.Folder.IsDeleted &&
+                !document.FileMetadata.IsDeleted)
+            .OrderBy(document => document.DocumentName)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task AddAsync(Document document, CancellationToken cancellationToken = default)
     {
         await _dbContext.Documents.AddAsync(document, cancellationToken);

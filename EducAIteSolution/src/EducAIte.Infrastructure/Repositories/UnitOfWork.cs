@@ -28,6 +28,11 @@ public sealed class UnitOfWork : IUnitOfWork, IAsyncDisposable
         _currentTransaction = await _context.Database.BeginTransactionAsync(cancellationToken);
     }
 
+    public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
     public async Task CommitTransactionAsync(CancellationToken cancellationToken = default)
     {
         if (_currentTransaction is null)

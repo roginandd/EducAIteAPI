@@ -12,6 +12,11 @@ public interface IDocumentRepository
 
     Task<IReadOnlyList<Document>> GetAllByStudentIdAsync(long studentId, CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Document>> GetAllByFolderIdAndStudentIdAsync(
+        long folderId,
+        long studentId,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(Document document, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(Document document, CancellationToken cancellationToken = default);

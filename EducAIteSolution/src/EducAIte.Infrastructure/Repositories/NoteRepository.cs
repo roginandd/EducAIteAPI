@@ -54,6 +54,28 @@ public sealed class NoteRepository : INoteRepository
         return notes;
     }
 
+    public async Task<IReadOnlyList<Note>> GetAllByDocumentIdsAndStudentIdAsync(
+        IReadOnlyCollection<long> documentIds,
+        long studentId,
+        CancellationToken cancellationToken = default)
+    {
+        if (documentIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await _context
+            .Notes
+            .AsNoTracking()
+            .Include(n => n.Document)
+            .ThenInclude(d => d.Folder)
+            .Where(n => documentIds.Contains(n.DocumentId))
+            .Where(n => n.Document.Folder.StudentId == studentId)
+            .OrderBy(n => n.DocumentId)
+            .ThenBy(n => n.SequenceNumber)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Note?> GetLastByDocumentIdAsync(long documentId, CancellationToken cancellationToken = default)
     {
         return await _context.Notes

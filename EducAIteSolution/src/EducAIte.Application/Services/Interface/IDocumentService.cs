@@ -10,7 +10,19 @@ public interface IDocumentService
         long studentId,
         CancellationToken cancellationToken = default);
 
+    Task<SignedUrlResponse?> GetSignedUrlAsync(
+        string sqid,
+        long studentId,
+        int expiresInMinutes = 60,
+        CancellationToken cancellationToken = default);
+
     Task<IEnumerable<DocumentResponse>> GetDocumentsByStudentAsync(long studentId, CancellationToken cancellationToken = default);
+
+    Task<UploadFolderDocumentResponse> UploadToFolderAsync(
+        string folderSqid,
+        UploadFolderDocumentRequest request,
+        long studentId,
+        CancellationToken cancellationToken = default);
 
     Task<DocumentResponse> CreateDocumentAsync(
         CreateDocumentRequest request,

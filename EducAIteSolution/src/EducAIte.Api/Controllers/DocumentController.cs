@@ -38,6 +38,31 @@ public class DocumentController : ControllerBase
         return Ok(document);
     }
 
+    [HttpGet("{sqid}/signed-url")]
+    public async Task<IActionResult> GetSignedUrl(
+        string sqid,
+        [FromQuery] int expiresInMinutes = 60,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetCurrentStudentId(out long studentId))
+        {
+            return Unauthorized(new { message = "Student ID claim is missing or invalid." });
+        }
+
+        SignedUrlResponse? signedUrl = await _documentService.GetSignedUrlAsync(
+            sqid,
+            studentId,
+            expiresInMinutes,
+            cancellationToken);
+
+        if (signedUrl is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(signedUrl);
+    }
+
     [HttpGet("student/{studentId:long}")]
     public async Task<IActionResult> GetByStudent(long studentId, CancellationToken cancellationToken)
     {

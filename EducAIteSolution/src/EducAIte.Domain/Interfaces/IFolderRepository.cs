@@ -40,7 +40,16 @@ public interface IFolderRepository
         long potentialDescendantId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlySet<string>> GetAllFolderKeysAsync(long studentId, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlySet<long>> GetExistingCourseIdsAsync(
+        long studentId,
+        IReadOnlyCollection<long> courseIds,
+        CancellationToken cancellationToken = default);
+
     Task AddAsync(Folder folder, CancellationToken cancellationToken = default);
+
+    Task AddRangeAsync(IEnumerable<Folder> folders, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(Folder folder, CancellationToken cancellationToken = default);
 
