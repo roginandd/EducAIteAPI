@@ -143,9 +143,49 @@ public class FolderRepository : IFolderRepository
         return false;
     }
 
+    public async Task<IReadOnlySet<string>> GetAllFolderKeysAsync(long studentId, CancellationToken cancellationToken = default)
+    {
+        List<string> folderKeys = await _dbContext.Folders
+            .AsNoTracking()
+            .Where(folder => folder.StudentId == studentId && !folder.IsDeleted)
+            .Select(folder => folder.FolderKey)
+            .ToListAsync(cancellationToken);
+
+        return new HashSet<string>(folderKeys, StringComparer.Ordinal);
+    }
+
+    public async Task<IReadOnlySet<long>> GetExistingCourseIdsAsync(
+        long studentId,
+        IReadOnlyCollection<long> courseIds,
+        CancellationToken cancellationToken = default)
+    {
+        if (courseIds.Count == 0)
+        {
+            return new HashSet<long>();
+        }
+
+        List<long> existingCourseIds = await _dbContext.Folders
+            .AsNoTracking()
+            .Where(folder =>
+                folder.StudentId == studentId &&
+                folder.CourseId.HasValue &&
+                courseIds.Contains(folder.CourseId.Value) &&
+                !folder.IsDeleted)
+            .Select(folder => folder.CourseId!.Value)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+
+        return new HashSet<long>(existingCourseIds);
+    }
+
     public async Task AddAsync(Folder folder, CancellationToken cancellationToken = default)
     {
         await _dbContext.Folders.AddAsync(folder, cancellationToken);
+    }
+
+    public async Task AddRangeAsync(IEnumerable<Folder> folders, CancellationToken cancellationToken = default)
+    {
+        await _dbContext.Folders.AddRangeAsync(folders, cancellationToken);
     }
 
     public async Task UpdateAsync(Folder folder, CancellationToken cancellationToken = default)

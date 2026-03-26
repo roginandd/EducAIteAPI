@@ -45,6 +45,8 @@ public class FolderConfiguration : IEntityTypeConfiguration<Folder>
             sy.Property(s => s.EndYear).HasColumnName("SchoolYearEnd");
         });
 
+        builder.Navigation(f => f.SchoolYear).IsRequired();
+
         // Foreign keys
         builder.HasOne(f => f.Student)
             .WithMany(s => s.Folders)

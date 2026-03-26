@@ -14,6 +14,8 @@ public class FolderService : IFolderService
     private readonly IFolderRepository _folderRepository;
     private readonly IStudentRepository _studentRepository;
     private readonly ICourseRepository _courseRepository;
+    private readonly IDocumentRepository _documentRepository;
+    private readonly INoteRepository _noteRepository;
     private readonly IResourceOwnershipService _resourceOwnershipService;
     private readonly ISqidService _sqidService;
     private readonly IUnitOfWork _unitOfWork;
@@ -23,6 +25,8 @@ public class FolderService : IFolderService
         IFolderRepository folderRepository,
         IStudentRepository studentRepository,
         ICourseRepository courseRepository,
+        IDocumentRepository documentRepository,
+        INoteRepository noteRepository,
         IResourceOwnershipService resourceOwnershipService,
         ISqidService sqidService,
         IUnitOfWork unitOfWork,
@@ -31,6 +35,8 @@ public class FolderService : IFolderService
         _folderRepository = folderRepository;
         _studentRepository = studentRepository;
         _courseRepository = courseRepository;
+        _documentRepository = documentRepository;
+        _noteRepository = noteRepository;
         _resourceOwnershipService = resourceOwnershipService;
         _sqidService = sqidService;
         _unitOfWork = unitOfWork;
@@ -50,6 +56,42 @@ public class FolderService : IFolderService
         Folder? folder = await _folderRepository.GetByIdAsync(folderId, cancellationToken);
 
         return folder?.ToResponse(_sqidService);
+    }
+
+    public async Task<FolderContentsResponse?> GetContentsAsync(
+        string sqid,
+        long studentId,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureStudentIdIsValid(studentId);
+
+        if (!_sqidService.TryDecode(sqid, out long folderId))
+        {
+            return null;
+        }
+
+        await _resourceOwnershipService.EnsureFolderOwnedByStudentAsync(folderId, studentId, cancellationToken);
+
+        Folder? folder = await _folderRepository.GetByIdAsync(folderId, cancellationToken);
+        if (folder is null)
+        {
+            return null;
+        }
+
+        IReadOnlyList<Folder> subFolders = await _folderRepository.GetSubFoldersAsync(folderId, cancellationToken);
+        IReadOnlyList<Document> documents = await _documentRepository.GetAllByFolderIdAndStudentIdAsync(folderId, studentId, cancellationToken);
+        IReadOnlyList<Note> notes = await _noteRepository.GetAllByDocumentIdsAndStudentIdAsync(
+            documents.Select(document => document.DocumentId).ToArray(),
+            studentId,
+            cancellationToken);
+
+        return new FolderContentsResponse
+        {
+            Folder = folder.ToResponse(_sqidService),
+            SubFolders = subFolders.Select(ToContentItemResponse).ToList(),
+            Documents = documents.Select(ToContentItemResponse).ToList(),
+            Notes = notes.Select(ToContentItemResponse).ToList()
+        };
     }
 
     public async Task<IReadOnlyList<FolderResponse>> GetFoldersByStudentAsync(long studentId, CancellationToken cancellationToken = default)
@@ -355,4 +397,28 @@ public class FolderService : IFolderService
 
         return decodedId;
     }
+
+    private FolderContentItemResponse ToContentItemResponse(Folder folder) => new()
+    {
+        Sqid = _sqidService.Encode(folder.FolderId),
+        Name = folder.Name,
+        CreatedAt = folder.CreatedAt,
+        UpdatedAt = folder.UpdatedAt
+    };
+
+    private FolderContentItemResponse ToContentItemResponse(Document document) => new()
+    {
+        Sqid = _sqidService.Encode(document.DocumentId),
+        Name = document.DocumentName,
+        CreatedAt = document.CreatedAt,
+        UpdatedAt = document.UpdatedAt
+    };
+
+    private FolderContentItemResponse ToContentItemResponse(Note note) => new()
+    {
+        Sqid = _sqidService.Encode(note.NoteId),
+        Name = note.Name,
+        CreatedAt = note.CreatedAt,
+        UpdatedAt = note.UpdatedAt
+    };
 }

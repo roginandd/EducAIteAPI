@@ -14,10 +14,12 @@ namespace EducAIte.Api.Controllers;
 public class FolderController : ControllerBase
 {
     private readonly IFolderService _folderService;
+    private readonly IDocumentService _documentService;
 
-    public FolderController(IFolderService folderService)
+    public FolderController(IFolderService folderService, IDocumentService documentService)
     {
         _folderService = folderService;
+        _documentService = documentService;
     }
 
     [HttpGet("{sqid}")]
@@ -35,6 +37,23 @@ public class FolderController : ControllerBase
         }
 
         return Ok(folder);
+    }
+
+    [HttpGet("{sqid}/contents")]
+    public async Task<IActionResult> GetContents(string sqid, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentStudentId(out long studentId))
+        {
+            return Unauthorized(new { message = "Student ID claim is missing or invalid." });
+        }
+
+        FolderContentsResponse? contents = await _folderService.GetContentsAsync(sqid, studentId, cancellationToken);
+        if (contents is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(contents);
     }
 
     [HttpGet("student/{studentId:long}")]
@@ -137,6 +156,30 @@ public class FolderController : ControllerBase
 
         FolderResponse createdFolder = await _folderService.CreateFolderAsync(request, studentId, cancellationToken);
         return CreatedAtAction(nameof(GetById), new { sqid = createdFolder.Sqid }, createdFolder);
+    }
+
+    [HttpPost("{sqid}/documents")]
+    public async Task<IActionResult> UploadDocument(
+        string sqid,
+        [FromForm] UploadFolderDocumentRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentStudentId(out long studentId))
+        {
+            return Unauthorized(new { message = "Student ID claim is missing or invalid." });
+        }
+
+        UploadFolderDocumentResponse created = await _documentService.UploadToFolderAsync(
+            sqid,
+            request,
+            studentId,
+            cancellationToken);
+
+        return CreatedAtAction(
+            nameof(DocumentController.GetById),
+            "Document",
+            new { sqid = created.Document.Sqid },
+            created);
     }
 
     [HttpPut("{sqid}")]
