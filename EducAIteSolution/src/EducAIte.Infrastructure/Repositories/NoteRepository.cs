@@ -76,6 +76,38 @@ public sealed class NoteRepository : INoteRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Note>> SearchByFolderIdsAndStudentIdAsync(
+        IReadOnlyCollection<long> folderIds,
+        long studentId,
+        string query,
+        CancellationToken cancellationToken = default)
+    {
+        if (folderIds.Count == 0)
+        {
+            return [];
+        }
+
+        string pattern = $"%{query}%";
+
+        return await _context
+            .Notes
+            .AsNoTracking()
+            .Include(note => note.Document)
+            .ThenInclude(document => document.Folder)
+            .Where(note =>
+                folderIds.Contains(note.Document.FolderId) &&
+                note.Document.Folder.StudentId == studentId &&
+                !note.Document.Folder.IsDeleted &&
+                !note.Document.IsDeleted &&
+                !note.IsDeleted)
+            .Where(note =>
+                EF.Functions.ILike(note.Name, pattern) ||
+                EF.Functions.ILike(note.NoteContent, pattern))
+            .OrderBy(note => note.Name)
+            .ThenBy(note => note.SequenceNumber)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Note?> GetLastByDocumentIdAsync(long documentId, CancellationToken cancellationToken = default)
     {
         return await _context.Notes

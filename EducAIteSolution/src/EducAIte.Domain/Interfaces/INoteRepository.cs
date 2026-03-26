@@ -19,6 +19,12 @@ public interface INoteRepository
         long studentId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Note>> SearchByFolderIdsAndStudentIdAsync(
+        IReadOnlyCollection<long> folderIds,
+        long studentId,
+        string query,
+        CancellationToken cancellationToken = default);
+
     Task<Note?> GetLastByDocumentIdAsync(long documentId, CancellationToken cancellationToken = default);
 
     Task AddAsync(Note note, CancellationToken cancellationToken = default);

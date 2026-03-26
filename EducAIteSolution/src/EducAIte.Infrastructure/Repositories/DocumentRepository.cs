@@ -82,6 +82,34 @@ public class DocumentRepository : IDocumentRepository
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<Document>> SearchByFolderIdsAndStudentIdAsync(
+        IReadOnlyCollection<long> folderIds,
+        long studentId,
+        string query,
+        CancellationToken cancellationToken = default)
+    {
+        if (folderIds.Count == 0)
+        {
+            return [];
+        }
+
+        string pattern = $"%{query}%";
+
+        return await _dbContext.Documents
+            .AsNoTracking()
+            .Include(document => document.Folder)
+            .Include(document => document.FileMetadata)
+            .Where(document =>
+                folderIds.Contains(document.FolderId) &&
+                document.Folder.StudentId == studentId &&
+                !document.Folder.IsDeleted &&
+                !document.FileMetadata.IsDeleted &&
+                !document.IsDeleted)
+            .Where(document => EF.Functions.ILike(document.DocumentName, pattern))
+            .OrderBy(document => document.DocumentName)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task AddAsync(Document document, CancellationToken cancellationToken = default)
     {
         await _dbContext.Documents.AddAsync(document, cancellationToken);
