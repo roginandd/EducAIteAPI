@@ -56,6 +56,26 @@ public class FolderController : ControllerBase
         return Ok(contents);
     }
 
+    [HttpGet("{sqid}/search")]
+    public async Task<IActionResult> Search(
+        string sqid,
+        [FromQuery(Name = "q")] string query,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentStudentId(out long studentId))
+        {
+            return Unauthorized(new { message = "Student ID claim is missing or invalid." });
+        }
+
+        FolderSearchResponse? results = await _folderService.SearchAsync(sqid, query, studentId, cancellationToken);
+        if (results is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(results);
+    }
+
     [HttpGet("student/{studentId:long}")]
     public async Task<IActionResult> GetByStudent(long studentId, CancellationToken cancellationToken)
     {

@@ -9,6 +9,12 @@ public interface IFolderService
 
     Task<FolderContentsResponse?> GetContentsAsync(string sqid, long studentId, CancellationToken cancellationToken = default);
 
+    Task<FolderSearchResponse?> SearchAsync(
+        string sqid,
+        string query,
+        long studentId,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<FolderResponse>> GetFoldersByStudentAsync(long studentId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<FolderResponse>> GetFoldersBySemesterAsync(

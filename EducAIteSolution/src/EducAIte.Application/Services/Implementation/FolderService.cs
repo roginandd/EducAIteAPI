@@ -94,6 +94,63 @@ public class FolderService : IFolderService
         };
     }
 
+    public async Task<FolderSearchResponse?> SearchAsync(
+        string sqid,
+        string query,
+        long studentId,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureStudentIdIsValid(studentId);
+
+        if (!_sqidService.TryDecode(sqid, out long rootFolderId))
+        {
+            return null;
+        }
+
+        string normalizedQuery = NormalizeSearchQuery(query);
+
+        await _resourceOwnershipService.EnsureFolderOwnedByStudentAsync(rootFolderId, studentId, cancellationToken);
+
+        Folder? rootFolder = await _folderRepository.GetByIdAsync(rootFolderId, cancellationToken);
+        if (rootFolder is null)
+        {
+            return null;
+        }
+
+        IReadOnlyList<Folder> allStudentFolders = await _folderRepository.GetAllByStudentIdAsync(studentId, cancellationToken);
+        IReadOnlyList<Folder> folderTree = GetFolderTree(rootFolderId, allStudentFolders);
+        long[] folderIds = folderTree.Select(folder => folder.FolderId).ToArray();
+        Dictionary<long, Folder> foldersById = folderTree.ToDictionary(folder => folder.FolderId);
+
+        IReadOnlyList<Document> matchingDocuments = await _documentRepository.SearchByFolderIdsAndStudentIdAsync(
+            folderIds,
+            studentId,
+            normalizedQuery,
+            cancellationToken);
+
+        IReadOnlyList<Note> matchingNotes = await _noteRepository.SearchByFolderIdsAndStudentIdAsync(
+            folderIds,
+            studentId,
+            normalizedQuery,
+            cancellationToken);
+
+        List<FolderSearchResultResponse> results =
+        [
+            .. matchingDocuments.Select(document => ToSearchResultResponse(document, rootFolderId, foldersById)),
+            .. matchingNotes.Select(note => ToSearchResultResponse(note, rootFolderId, foldersById))
+        ];
+
+        return new FolderSearchResponse
+        {
+            FolderSqid = sqid,
+            Query = normalizedQuery,
+            Results = results
+                .OrderBy(result => result.ItemType, StringComparer.Ordinal)
+                .ThenBy(result => result.Name, StringComparer.OrdinalIgnoreCase)
+                .ToList()
+        };
+    }
+
     public async Task<IReadOnlyList<FolderResponse>> GetFoldersByStudentAsync(long studentId, CancellationToken cancellationToken = default)
     {
         await EnsureStudentExistsAsync(studentId, cancellationToken);
@@ -396,6 +453,109 @@ public class FolderService : IFolderService
         }
 
         return decodedId;
+    }
+
+    private static string NormalizeSearchQuery(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            throw new ArgumentException("Query is required.", nameof(query));
+        }
+
+        return query.Trim();
+    }
+
+    private static IReadOnlyList<Folder> GetFolderTree(long rootFolderId, IReadOnlyList<Folder> allStudentFolders)
+    {
+        Dictionary<long, List<Folder>> childrenByParentId = allStudentFolders
+            .Where(folder => folder.ParentFolderId.HasValue)
+            .GroupBy(folder => folder.ParentFolderId!.Value)
+            .ToDictionary(group => group.Key, group => group.OrderBy(folder => folder.Name).ToList());
+
+        Folder? rootFolder = allStudentFolders.FirstOrDefault(folder => folder.FolderId == rootFolderId);
+        if (rootFolder is null)
+        {
+            return [];
+        }
+
+        List<Folder> results = [rootFolder];
+        Queue<long> queue = new([rootFolderId]);
+
+        while (queue.Count > 0)
+        {
+            long currentFolderId = queue.Dequeue();
+
+            if (!childrenByParentId.TryGetValue(currentFolderId, out List<Folder>? children))
+            {
+                continue;
+            }
+
+            foreach (Folder child in children)
+            {
+                results.Add(child);
+                queue.Enqueue(child.FolderId);
+            }
+        }
+
+        return results;
+    }
+
+    private FolderSearchResultResponse ToSearchResultResponse(
+        Document document,
+        long rootFolderId,
+        IReadOnlyDictionary<long, Folder> foldersById) => new()
+    {
+        Sqid = _sqidService.Encode(document.DocumentId),
+        ItemType = "document",
+        Name = document.DocumentName,
+        LocationDisplayPath = BuildLocationDisplayPath(
+            document.FolderId,
+            rootFolderId,
+            foldersById,
+            document.DocumentName)
+    };
+
+    private FolderSearchResultResponse ToSearchResultResponse(
+        Note note,
+        long rootFolderId,
+        IReadOnlyDictionary<long, Folder> foldersById) => new()
+    {
+        Sqid = _sqidService.Encode(note.NoteId),
+        ItemType = "note",
+        Name = note.Name,
+        LocationDisplayPath = BuildLocationDisplayPath(
+            note.Document.FolderId,
+            rootFolderId,
+            foldersById,
+            note.Document.DocumentName,
+            note.Name)
+    };
+
+    private static string BuildLocationDisplayPath(
+        long folderId,
+        long rootFolderId,
+        IReadOnlyDictionary<long, Folder> foldersById,
+        params string[] trailingSegments)
+    {
+        List<string> segments = [];
+        long? currentFolderId = folderId;
+
+        while (currentFolderId.HasValue && foldersById.TryGetValue(currentFolderId.Value, out Folder? folder))
+        {
+            segments.Add(folder.Name);
+
+            if (folder.FolderId == rootFolderId)
+            {
+                break;
+            }
+
+            currentFolderId = folder.ParentFolderId;
+        }
+
+        segments.Reverse();
+        segments.AddRange(trailingSegments);
+
+        return string.Join(" > ", segments);
     }
 
     private FolderContentItemResponse ToContentItemResponse(Folder folder) => new()
