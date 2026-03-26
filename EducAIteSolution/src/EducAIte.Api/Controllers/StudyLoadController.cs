@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using EducAIte.Application.DTOs.Request;
 using EducAIte.Application.DTOs.Response;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
 
 namespace EducAIte.Api.Controllers;
 
@@ -36,6 +38,27 @@ public class StudyLoadController : ControllerBase
         return Ok(studyLoad);
     }
 
+    [HttpGet("{studyLoadSqid}")]
+    public async Task<IActionResult> GetBySqid(string studyLoadSqid, CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentStudentId(out long studentId))
+        {
+            return Unauthorized(new { message = "Student ID claim is missing or invalid." });
+        }
+
+        StudyLoadResponse? studyLoad = await _studyLoadService.GetByIdAndStudentIdAsync(
+            studentId,
+            studyLoadSqid,
+            cancellationToken);
+
+        if (studyLoad is null)
+        {
+            return NotFound();
+        }
+
+        return Ok(studyLoad);
+    }
+
     /// <summary>
     /// Creates a new study load for a student.
     /// </summary>
@@ -48,6 +71,26 @@ public class StudyLoadController : ControllerBase
         return CreatedAtAction(nameof(GetByStudentId),
             new { studentSqid = createdStudyLoad.StudentSqid },
             createdStudyLoad);
+    }
+
+    [HttpPost("{studyLoadSqid}/parsed-courses")]
+    public async Task<IActionResult> ApplyParsedCourses(
+        string studyLoadSqid,
+        [FromBody] ApplyParsedStudyLoadCoursesRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentStudentId(out long studentId))
+        {
+            return Unauthorized(new { message = "Student ID claim is missing or invalid." });
+        }
+
+        StudyLoadResponse updated = await _studyLoadService.ApplyParsedCoursesAsync(
+            studyLoadSqid,
+            request,
+            studentId,
+            cancellationToken);
+
+        return Ok(updated);
     }
 
     /// <summary>
@@ -71,5 +114,13 @@ public class StudyLoadController : ControllerBase
     public async Task<IActionResult> Delete(long id)
     {
         return null;
+    }
+
+    private bool TryGetCurrentStudentId(out long studentId)
+    {
+        string? claimValue = User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                             User.FindFirstValue(JwtRegisteredClaimNames.Sub);
+
+        return long.TryParse(claimValue, out studentId);
     }
 }

@@ -362,8 +362,22 @@ public sealed class StudentCourseService : IStudentCourseService
 
     private async Task<StudyLoad> GetOwnedStudyLoadOrThrowAsync(long studyLoadId, long studentId, CancellationToken cancellationToken)
     {
-        StudyLoad? studyLoad = await _studyLoadRepository.GetByIdAndStudentIdAsync(studyLoadId, studentId, cancellationToken) ?? throw new StudyLoadNotFoundException(studyLoadId);;
-        
+        StudyLoad? studyLoad = await _studyLoadRepository.GetByIdAndStudentIdAsync(studyLoadId, studentId, cancellationToken);
+        if (studyLoad is not null)
+        {
+            return studyLoad;
+        }
+
+        if (studyLoad is null)
+        {
+            throw new StudyLoadNotFoundException(studyLoadId);
+        }
+
+        if (studyLoad.StudentId != studentId)
+        {
+            throw new StudyLoadForbiddenException();
+        }
+
         return studyLoad;
     }
 

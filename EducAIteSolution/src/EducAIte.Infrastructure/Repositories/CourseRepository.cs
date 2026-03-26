@@ -74,6 +74,21 @@ public class CourseRepository : ICourseRepository
         return existingEdpCodes;
     }
 
+    public async Task<IReadOnlyList<Course>> GetByEdpCodesAsync(
+        IReadOnlyCollection<string> edpCodes,
+        CancellationToken cancellationToken = default)
+    {
+        if (edpCodes.Count == 0)
+        {
+            return [];
+        }
+
+        return await _dbContext.Courses
+            .Where(course => !course.IsDeleted && edpCodes.Contains(course.EDPCode))
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<int> InsertMissingCoursesAsync(IReadOnlyList<Course> courses, CancellationToken cancellationToken = default)
     {
         if (courses.Count == 0)

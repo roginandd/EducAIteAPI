@@ -105,6 +105,29 @@ public sealed class StudentCourseRepository : IStudentCourseRepository
     }
 
     /// <inheritdoc />
+    public async Task<IReadOnlyList<StudentCourse>> GetByStudyLoadAndCourseIdsAsync(
+        long studyLoadId,
+        IReadOnlyCollection<long> courseIds,
+        bool includeDeleted = false,
+        CancellationToken cancellationToken = default)
+    {
+        if (courseIds.Count == 0)
+        {
+            return [];
+        }
+
+        IQueryable<StudentCourse> query = CreateBaseQuery()
+            .Where(studentCourse => studentCourse.StudyLoadId == studyLoadId && courseIds.Contains(studentCourse.CourseId));
+
+        if (!includeDeleted)
+        {
+            query = query.Where(studentCourse => !studentCourse.IsDeleted);
+        }
+
+        return await query.ToListAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
     public async Task<bool> ExistsByIdAsync(long studentCourseId, CancellationToken cancellationToken = default)
     {
         return await _context.StudentCourses

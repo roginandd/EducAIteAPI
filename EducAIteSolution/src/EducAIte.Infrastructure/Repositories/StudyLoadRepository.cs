@@ -26,6 +26,14 @@ public class StudyLoadRepository(ApplicationDbContext dbContext) : IStudyLoadRep
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<StudyLoad?> GetByIdAndStudentIdAsync(long studentId, long studyloadId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.StudyLoads
+            .Include(studyLoad => studyLoad.Courses)
+            .Include(studyLoad => studyLoad.FileMetadata)
+            .FirstOrDefaultAsync(studyLoad => studyLoad.StudyLoadId == studyloadId && studyLoad.StudentId == studentId && !studyLoad.IsDeleted, cancellationToken);
+    }
+
     public async Task<StudyLoad> AddStudyLoadAsync(StudyLoad studyLoad, CancellationToken cancellationToken = default)
     {
         var entry = await _dbContext.StudyLoads.AddAsync(studyLoad, cancellationToken);

@@ -40,6 +40,15 @@ public interface IStudentCourseRepository
     Task<StudentCourse?> GetByCourseAndStudyLoadAsync(long courseId, long studyLoadId, bool includeDeleted = false, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Retrieves enrollments for a study load and a batch of course identifiers.
+    /// </summary>
+    Task<IReadOnlyList<StudentCourse>> GetByStudyLoadAndCourseIdsAsync(
+        long studyLoadId,
+        IReadOnlyCollection<long> courseIds,
+        bool includeDeleted = false,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Determines whether an active enrollment exists.
     /// </summary>
     Task<bool> ExistsByIdAsync(long studentCourseId, CancellationToken cancellationToken = default);

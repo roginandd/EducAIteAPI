@@ -50,6 +50,13 @@ public interface ICourseRepository
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Retrieves all active courses for the provided EDP codes.
+    /// </summary>
+    Task<IReadOnlyList<Course>> GetByEdpCodesAsync(
+        IReadOnlyCollection<string> edpCodes,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Persists only the course rows whose EDP codes are missing from the database.
     /// </summary>
     /// <param name="courses">The course entities to insert.</param>
