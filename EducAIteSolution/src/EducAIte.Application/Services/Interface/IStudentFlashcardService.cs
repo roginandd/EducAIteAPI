@@ -15,6 +15,12 @@ public interface IStudentFlashcardService
 
     Task<FlashcardAttemptResultResponse> SubmitAttemptAsync(string flashcardSqid, SubmitFlashcardAttemptRequest request, long studentId, CancellationToken cancellationToken = default);
 
+    Task<SubmitEvaluatedFlashcardAttemptResponse> SubmitEvaluatedAttemptAsync(
+        string flashcardSqid,
+        SubmitEvaluatedFlashcardAttemptRequest request,
+        long studentId,
+        CancellationToken cancellationToken = default);
+
     Task<StudentFlashcardProgressResponse> RecordCorrectAsync(string flashcardSqid, long studentId, CancellationToken cancellationToken = default);
 
     Task<StudentFlashcardProgressResponse> RecordWrongAsync(string flashcardSqid, long studentId, CancellationToken cancellationToken = default);
