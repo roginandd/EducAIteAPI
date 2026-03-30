@@ -22,8 +22,8 @@ public static class DocumentMappingExtensions
     {
         document.UpdateDetails(
             request.DocumentName,
-            request.FolderId,
-            request.FileMetadataId
+            request.FolderId ?? document.FolderId,
+            request.FileMetadataId ?? document.FileMetadataId
         );
     }
 }

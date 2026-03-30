@@ -17,7 +17,7 @@ public sealed class FolderMappingConfig : IRegister
             .Map(dest => dest.SchoolYearStart, src => src.SchoolYear.StartYear)
             .Map(dest => dest.SchoolYearEnd, src => src.SchoolYear.EndYear)
             .Map(dest => dest.SchoolYearDisplayName, src => src.SchoolYear.DisplayName)
-            .Map(dest => dest.CourseSqid, src => src.CourseId.HasValue ? GetSqidService().Encode(src.CourseId.Value) : null)
+            .Map(dest => dest.StudentCourseSqid, src => GetSqidService().Encode(src.StudentCourseId))
             .Map(dest => dest.ParentFolderSqid, src => src.ParentFolderId.HasValue ? GetSqidService().Encode(src.ParentFolderId.Value) : null);
 
         config.NewConfig<CreateFolderRequest, Folder>()
@@ -27,13 +27,13 @@ public sealed class FolderMappingConfig : IRegister
                 src.Semester,
                 src.FolderKey,
                 src.Name,
-                src.CourseId));
+                GetStudentCourseId()));
 
         config.NewConfig<UpdateFolderRequest, Folder>()
             .Ignore(destination => destination.FolderId)
             .Ignore(destination => destination.StudentId)
             .Ignore(destination => destination.Student)
-            .Ignore(destination => destination.Course)
+            .Ignore(destination => destination.StudentCourse)
             .Ignore(destination => destination.ParentFolder)
             .Ignore(destination => destination.SubFolders)
             .Ignore(destination => destination.Documents)
@@ -60,5 +60,15 @@ public sealed class FolderMappingConfig : IRegister
         }
 
         return studentId;
+    }
+
+    private static long GetStudentCourseId()
+    {
+        if (MapContext.Current?.Parameters.TryGetValue("studentCourseId", out object? value) != true || value is not long studentCourseId)
+        {
+            throw new InvalidOperationException("studentCourseId mapping parameter is required.");
+        }
+
+        return studentCourseId;
     }
 }

@@ -24,14 +24,22 @@ public static class FlashcardMappingExtensions
         return new Flashcard(
             request.Question,
             request.Answer,
-            noteId);
+            noteId,
+            request.ConceptExplanation,
+            request.AnsweringGuidance,
+            request.AcceptedAnswerAliases);
     }
 
     public static void UpdateFromEntity(
         this UpdateFlashcardRequest request,
         Flashcard flashcard)
     {
-        flashcard.UpdateContent(request.Question, request.Answer);
+        flashcard.UpdateContent(
+            request.Question,
+            request.Answer,
+            request.ConceptExplanation,
+            request.AnsweringGuidance,
+            request.AcceptedAnswerAliases);
     }
 
     public static Flashcard ToEntity(
@@ -42,6 +50,9 @@ public static class FlashcardMappingExtensions
         return new Flashcard(
             item.Question,
             item.Answer,
-            noteId);
+            noteId,
+            item.ConceptExplanation,
+            item.AnsweringGuidance,
+            item.AcceptedAnswerAliases);
     }
 }

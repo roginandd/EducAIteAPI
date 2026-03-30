@@ -20,17 +20,18 @@ public static class FolderMappingExtensions
             .AdaptToType<FolderResponse>();
     }
 
-    public static Folder ToEntity(this CreateFolderRequest request, long studentId)
+    public static Folder ToEntity(this CreateFolderRequest request, long studentId, long studentCourseId)
     {
         ArgumentNullException.ThrowIfNull(request);
 
         return request
             .BuildAdapter()
             .AddParameters("studentId", studentId)
+            .AddParameters("studentCourseId", studentCourseId)
             .AdaptToType<Folder>();
     }
 
-    public static void ApplyToEntity(this UpdateFolderRequest request, Folder folder)
+    public static void ApplyToEntity(this UpdateFolderRequest request, Folder folder, long studentCourseId)
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(folder);
@@ -40,7 +41,7 @@ public static class FolderMappingExtensions
             request.Semester,
             request.FolderKey,
             request.Name,
-            request.CourseId,
+            studentCourseId,
             folder.ParentFolderId);
     }
 }
