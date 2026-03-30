@@ -2,6 +2,7 @@ using EducAIte.Api.Exceptions;
 using EducAIte.Application.Extensions;
 using EducAIte.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +19,21 @@ builder.Services.AddApplicationLayer(); // extension method to register app serv
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+}
+
+if (builder.Environment.IsDevelopment())
+{
+    var connectionStringBuilder = new NpgsqlConnectionStringBuilder(connectionString)
+    {
+        IncludeErrorDetail = true
+    };
+
+    connectionString = connectionStringBuilder.ConnectionString;
+}
+
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
@@ -25,6 +41,17 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddAwsServices(builder.Configuration);
 builder.Services.AddJwtAuthentication(builder.Configuration);
 builder.Services.AddAuthorization();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("LocalFrontend", policy =>
+    {
+        policy
+            .WithOrigins("http://localhost:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
 
 var app = builder.Build();
 
@@ -33,6 +60,7 @@ app.MapScalarWithAuth();
 app.UseExceptionHandler();
 
 app.UseHttpsRedirection();
+app.UseCors("LocalFrontend");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
