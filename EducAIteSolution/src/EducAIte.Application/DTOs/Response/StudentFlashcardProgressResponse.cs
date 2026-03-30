@@ -8,6 +8,8 @@ public record StudentFlashcardProgressResponse
 
     public required string DocumentSqid { get; init; } = string.Empty;
 
+    public required string StudentCourseSqid { get; init; } = string.Empty;
+
     public int CorrectCount { get; init; }
 
     public int WrongCount { get; init; }
@@ -22,9 +24,11 @@ public record StudentFlashcardProgressResponse
 
     public int LapseCount { get; init; }
 
-    public string ReviewState { get; init; } = string.Empty;
-
     public string? LastReviewOutcome { get; init; }
+
+    public string? LastEvaluationVerdict { get; init; }
+
+    public int? LastQualityScore { get; init; }
 
     public DateTime? LastReviewedAt { get; init; }
 

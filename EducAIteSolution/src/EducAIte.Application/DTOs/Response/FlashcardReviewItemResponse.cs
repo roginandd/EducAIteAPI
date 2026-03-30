@@ -8,6 +8,8 @@ public record FlashcardReviewItemResponse
 
     public required string DocumentSqid { get; init; } = string.Empty;
 
+    public required string StudentCourseSqid { get; init; } = string.Empty;
+
     public required string Question { get; init; } = string.Empty;
 
     public int CorrectCount { get; init; }
@@ -17,8 +19,6 @@ public record FlashcardReviewItemResponse
     public int TotalAttempts { get; init; }
 
     public bool IsTracked { get; init; }
-
-    public string ReviewState { get; init; } = string.Empty;
 
     public DateTime? LastReviewedAt { get; init; }
 

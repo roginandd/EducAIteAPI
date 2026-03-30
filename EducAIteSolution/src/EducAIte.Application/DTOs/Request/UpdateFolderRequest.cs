@@ -12,7 +12,7 @@ public record UpdateFolderRequest
 
     public byte Semester { get; init; }
 
-    public long? CourseId { get; init; }
+    public required string StudentCourseSqid { get; init; } = string.Empty;
 
     public string? ParentFolderSqid { get; init; }
 }

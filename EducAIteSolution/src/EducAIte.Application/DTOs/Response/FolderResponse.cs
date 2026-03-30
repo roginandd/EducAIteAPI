@@ -18,7 +18,7 @@ public record FolderResponse
 
     public byte Semester { get; init; }
 
-    public string? CourseSqid { get; init; }
+    public string StudentCourseSqid { get; init; } = string.Empty;
 
     public string? ParentFolderSqid { get; init; }
 
