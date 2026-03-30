@@ -15,7 +15,7 @@ public class StudentRepository : IStudentRepository
     public async Task<Student?> GetByStudentIdAsync(long studentId, CancellationToken cancellationToken = default)
     {
         Student? student = await _context.Students.AsNoTracking()
-            .FirstOrDefaultAsync(student => student.StudentId == studentId, cancellationToken);
+            .FirstOrDefaultAsync(student => student.StudentId == studentId && !student.IsDeleted, cancellationToken);
 
         if (student == null)
            return null;
@@ -23,14 +23,31 @@ public class StudentRepository : IStudentRepository
         return student;
     }
 
+    public async Task<Student?> GetTrackedByStudentIdAsync(long studentId, CancellationToken cancellationToken = default)
+    {
+        return await _context.Students
+            .FirstOrDefaultAsync(student => student.StudentId == studentId && !student.IsDeleted, cancellationToken);
+    }
+
     public async Task<Student?> GetByStudentIdNumberAsync(string studentIdNumber, CancellationToken cancellationToken = default)
     {
         Student? student = await _context.Students.AsNoTracking()
-            .FirstOrDefaultAsync(student => student.StudentIdNumber == studentIdNumber, cancellationToken);
+            .FirstOrDefaultAsync(student => student.StudentIdNumber == studentIdNumber && !student.IsDeleted, cancellationToken);
 
         if (student == null)
             return null;
         
+        return student;
+    }
+
+    public async Task<Student?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
+    {
+        Student? student = await _context.Students.AsNoTracking()
+            .FirstOrDefaultAsync(student => student.Email == email && !student.IsDeleted, cancellationToken);
+
+        if (student == null)
+            return null;
+
         return student;
     }
 
@@ -41,6 +58,11 @@ public class StudentRepository : IStudentRepository
         await _context.SaveChangesAsync(cancellationToken);
         return student;
     }
-    
+
+    public async Task UpdateAsync(Student student, CancellationToken cancellationToken = default)
+    {
+        _context.Students.Update(student);
+        await Task.CompletedTask;
+    }
 
 }

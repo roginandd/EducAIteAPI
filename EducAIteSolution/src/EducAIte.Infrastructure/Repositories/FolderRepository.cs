@@ -154,12 +154,12 @@ public class FolderRepository : IFolderRepository
         return new HashSet<string>(folderKeys, StringComparer.Ordinal);
     }
 
-    public async Task<IReadOnlySet<long>> GetExistingCourseIdsAsync(
+    public async Task<IReadOnlySet<long>> GetExistingStudentCourseIdsAsync(
         long studentId,
-        IReadOnlyCollection<long> courseIds,
+        IReadOnlyCollection<long> studentCourseIds,
         CancellationToken cancellationToken = default)
     {
-        if (courseIds.Count == 0)
+        if (studentCourseIds.Count == 0)
         {
             return new HashSet<long>();
         }
@@ -168,10 +168,9 @@ public class FolderRepository : IFolderRepository
             .AsNoTracking()
             .Where(folder =>
                 folder.StudentId == studentId &&
-                folder.CourseId.HasValue &&
-                courseIds.Contains(folder.CourseId.Value) &&
+                studentCourseIds.Contains(folder.StudentCourseId) &&
                 !folder.IsDeleted)
-            .Select(folder => folder.CourseId!.Value)
+            .Select(folder => folder.StudentCourseId)
             .Distinct()
             .ToListAsync(cancellationToken);
 
@@ -201,7 +200,7 @@ public class FolderRepository : IFolderRepository
             folder.Semester,
             folder.FolderKey,
             folder.Name,
-            folder.CourseId,
+            folder.StudentCourseId,
             folder.ParentFolderId);
     }
 

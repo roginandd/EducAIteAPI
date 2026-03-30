@@ -22,6 +22,7 @@ public class DocumentRepository : IDocumentRepository
             .Include(document => document.FileMetadata)
             .FirstOrDefaultAsync(document =>
                 document.DocumentId == id &&
+                !document.IsDeleted &&
                 !document.Folder.IsDeleted &&
                 !document.FileMetadata.IsDeleted,
                 cancellationToken);
@@ -36,6 +37,7 @@ public class DocumentRepository : IDocumentRepository
             .ThenInclude(note => note.Flashcards)
             .FirstOrDefaultAsync(document =>
                 document.DocumentId == id &&
+                !document.IsDeleted &&
                 !document.Folder.IsDeleted &&
                 !document.FileMetadata.IsDeleted,
                 cancellationToken);
@@ -46,7 +48,7 @@ public class DocumentRepository : IDocumentRepository
         return await _dbContext.Documents
             .AsNoTracking()
             .Where(document => document.DocumentId == documentId)
-            .Where(document => !document.Folder.IsDeleted && !document.FileMetadata.IsDeleted)
+            .Where(document => !document.IsDeleted && !document.Folder.IsDeleted && !document.FileMetadata.IsDeleted)
             .AnyAsync(document => document.Folder.StudentId == studentId, cancellationToken);
     }
 
@@ -57,6 +59,7 @@ public class DocumentRepository : IDocumentRepository
             .Include(document => document.Folder)
             .Include(document => document.FileMetadata)
             .Where(document =>
+                !document.IsDeleted &&
                 document.Folder.StudentId == studentId &&
                 !document.Folder.IsDeleted &&
                 !document.FileMetadata.IsDeleted)
@@ -76,6 +79,7 @@ public class DocumentRepository : IDocumentRepository
             .Where(document =>
                 document.FolderId == folderId &&
                 document.Folder.StudentId == studentId &&
+                !document.IsDeleted &&
                 !document.Folder.IsDeleted &&
                 !document.FileMetadata.IsDeleted)
             .OrderBy(document => document.DocumentName)

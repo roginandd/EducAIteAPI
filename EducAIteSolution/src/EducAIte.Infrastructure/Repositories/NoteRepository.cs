@@ -36,6 +36,7 @@ public sealed class NoteRepository : INoteRepository
             .ThenInclude(d => d.Folder)
             .Where(n => n.DocumentId == documentId)
             .Where(n => n.Document.Folder.StudentId == studentId)
+            .Where(n => !n.IsDeleted && !n.Document.IsDeleted && !n.Document.Folder.IsDeleted)
             .OrderBy(n => n.SequenceNumber)
             .ToListAsync(cancellationToken);
     }
@@ -48,6 +49,7 @@ public sealed class NoteRepository : INoteRepository
             .Include(n => n.Document)
             .ThenInclude(d => d.Folder)
             .Where(n => n.Document.Folder.StudentId == studentId)
+            .Where(n => !n.IsDeleted && !n.Document.IsDeleted && !n.Document.Folder.IsDeleted)
             .OrderBy(n => n.SequenceNumber)
             .ToListAsync(cancellationToken);
 
@@ -71,6 +73,7 @@ public sealed class NoteRepository : INoteRepository
             .ThenInclude(d => d.Folder)
             .Where(n => documentIds.Contains(n.DocumentId))
             .Where(n => n.Document.Folder.StudentId == studentId)
+            .Where(n => !n.IsDeleted && !n.Document.IsDeleted && !n.Document.Folder.IsDeleted)
             .OrderBy(n => n.DocumentId)
             .ThenBy(n => n.SequenceNumber)
             .ToListAsync(cancellationToken);
@@ -112,7 +115,7 @@ public sealed class NoteRepository : INoteRepository
     {
         return await _context.Notes
             .AsNoTracking()
-            .Where(n => n.DocumentId == documentId)
+            .Where(n => n.DocumentId == documentId && !n.IsDeleted)
             .OrderByDescending(n => n.SequenceNumber)
             .FirstOrDefaultAsync(cancellationToken);
     }
@@ -139,7 +142,7 @@ public sealed class NoteRepository : INoteRepository
             .Notes
             .AsNoTracking()
             .Include(n => n.Document)
-            .FirstOrDefaultAsync(n => n.NoteId == noteId, cancellationToken);
+            .FirstOrDefaultAsync(n => n.NoteId == noteId && !n.IsDeleted && !n.Document.IsDeleted, cancellationToken);
 
         return note;
     }
@@ -149,7 +152,7 @@ public sealed class NoteRepository : INoteRepository
         Note? note = await _context
             .Notes
             .Include(n => n.Document)
-            .FirstOrDefaultAsync(n => n.NoteId == noteId, cancellationToken);
+            .FirstOrDefaultAsync(n => n.NoteId == noteId && !n.IsDeleted && !n.Document.IsDeleted, cancellationToken);
 
         return note;
     }
@@ -158,7 +161,7 @@ public sealed class NoteRepository : INoteRepository
     {
         return await _context.Notes
             .Include(n => n.Document)
-            .FirstOrDefaultAsync(n => n.NoteId == noteId && n.DocumentId == documentId, cancellationToken);
+            .FirstOrDefaultAsync(n => n.NoteId == noteId && n.DocumentId == documentId && !n.IsDeleted && !n.Document.IsDeleted, cancellationToken);
     }
 
     public async Task DeleteAsync(long noteId, CancellationToken cancellationToken = default)
