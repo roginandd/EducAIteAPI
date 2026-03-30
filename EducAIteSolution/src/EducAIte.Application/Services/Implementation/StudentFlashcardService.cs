@@ -1,8 +1,11 @@
 using EducAIte.Application.DTOs.Request;
 using EducAIte.Application.DTOs.Response;
 using EducAIte.Application.Extensions.MappingExtensions;
+using EducAIte.Application.Interfaces;
+using EducAIte.Application.Services;
 using EducAIte.Application.Services.Interface;
 using EducAIte.Domain.Entities;
+using EducAIte.Domain.Enum;
 using EducAIte.Domain.Exceptions.Base;
 using EducAIte.Domain.Exceptions.Flashcard;
 using EducAIte.Domain.Exceptions.StudentFlashcard;
@@ -14,18 +17,33 @@ namespace EducAIte.Application.Services.Implementation;
 public sealed class StudentFlashcardService : IStudentFlashcardService
 {
     private readonly IStudentFlashcardRepository _studentFlashcardRepository;
+    private readonly IStudentFlashcardAnalyticsService _studentFlashcardAnalyticsService;
+    private readonly IFlashcardAnswerHistoryRepository _flashcardAnswerHistoryRepository;
+    private readonly IPerformanceSummaryService _performanceSummaryService;
+    private readonly IStudentPerformanceAiWorkQueue _studentPerformanceAiWorkQueue;
     private readonly IFlashcardRepository _flashcardRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly ISqidService _sqidService;
     private readonly ILogger<StudentFlashcardService> _logger;
 
     public StudentFlashcardService(
         IStudentFlashcardRepository studentFlashcardRepository,
+        IStudentFlashcardAnalyticsService studentFlashcardAnalyticsService,
+        IFlashcardAnswerHistoryRepository flashcardAnswerHistoryRepository,
+        IPerformanceSummaryService performanceSummaryService,
+        IStudentPerformanceAiWorkQueue studentPerformanceAiWorkQueue,
         IFlashcardRepository flashcardRepository,
+        IUnitOfWork unitOfWork,
         ISqidService sqidService,
         ILogger<StudentFlashcardService> logger)
     {
         _studentFlashcardRepository = studentFlashcardRepository;
+        _studentFlashcardAnalyticsService = studentFlashcardAnalyticsService;
+        _flashcardAnswerHistoryRepository = flashcardAnswerHistoryRepository;
+        _performanceSummaryService = performanceSummaryService;
+        _studentPerformanceAiWorkQueue = studentPerformanceAiWorkQueue;
         _flashcardRepository = flashcardRepository;
+        _unitOfWork = unitOfWork;
         _sqidService = sqidService;
         _logger = logger;
     }
@@ -40,6 +58,8 @@ public sealed class StudentFlashcardService : IStudentFlashcardService
         StudentFlashcard? existing = await _studentFlashcardRepository.GetByStudentAndFlashcardIdAsync(studentId, flashcardId, cancellationToken);
         if (existing is not null)
         {
+            await _studentFlashcardAnalyticsService.EnsureInitializedAsync(existing, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
             return existing.ToProgressResponse(_sqidService);
         }
 
@@ -49,6 +69,8 @@ public sealed class StudentFlashcardService : IStudentFlashcardService
             archived.Restore(now);
             archived.StartTracking(now);
             await _studentFlashcardRepository.UpdateAsync(archived, cancellationToken);
+            await _studentFlashcardAnalyticsService.EnsureInitializedAsync(archived, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
             _logger.LogInformation("Restored flashcard progress for flashcard {FlashcardId}", flashcardId);
             return archived.ToProgressResponse(flashcard, _sqidService);
         }
@@ -56,6 +78,9 @@ public sealed class StudentFlashcardService : IStudentFlashcardService
         StudentFlashcard created = new(studentId, flashcardId);
         created.StartTracking(now);
         await _studentFlashcardRepository.AddAsync(created, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _studentFlashcardAnalyticsService.EnsureInitializedAsync(created, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Started flashcard progress for flashcard {FlashcardId}", flashcardId);
 
         return created.ToProgressResponse(flashcard, _sqidService);
@@ -139,6 +164,7 @@ public sealed class StudentFlashcardService : IStudentFlashcardService
 
         studentFlashcard.ApplyReviewResult(isCorrect, DateTime.UtcNow);
         await _studentFlashcardRepository.UpdateAsync(studentFlashcard, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new FlashcardAttemptResultResponse
         {
@@ -149,10 +175,115 @@ public sealed class StudentFlashcardService : IStudentFlashcardService
                 ? "Correct. The flashcard will come back later."
                 : "Incorrect. Review the expected answer and try it again later in the session.",
             IsCorrect = isCorrect,
+            Evaluation = CreateEvaluationResponse(
+                isCorrect ? FlashcardAnswerVerdict.ExactCorrect : FlashcardAnswerVerdict.Incorrect,
+                isCorrect,
+                isCorrect ? 5 : 0,
+                isCorrect
+                    ? "Correct. The flashcard will come back later."
+                    : "Incorrect. Review the expected answer and try it again later in the session.",
+                string.Empty),
             ShowAgainInSession = !isCorrect,
             RequeueAfter = isCorrect ? 0 : 3,
             NextReviewAt = studentFlashcard.NextReviewAt,
             Progress = studentFlashcard.ToProgressResponse(flashcard, _sqidService)
+        };
+    }
+
+    public async Task<SubmitEvaluatedFlashcardAttemptResponse> SubmitEvaluatedAttemptAsync(
+        string flashcardSqid,
+        SubmitEvaluatedFlashcardAttemptRequest request,
+        long studentId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(request.Evaluation);
+        ArgumentNullException.ThrowIfNull(request.Analytics);
+
+        (StudentFlashcard studentFlashcard, Flashcard flashcard) = await EnsureTrackedProgressAsync(flashcardSqid, studentId, cancellationToken);
+
+        string submittedAnswer = request.Answer?.Trim() ?? string.Empty;
+        DateTime now = DateTime.UtcNow;
+        FlashcardAnswerVerdict verdict = ParseEnum<FlashcardAnswerVerdict>(request.Evaluation.Verdict, nameof(request.Evaluation.Verdict));
+
+        studentFlashcard.ApplyEvaluation(
+            request.Evaluation.AcceptedAsCorrect,
+            request.Evaluation.QualityScore,
+            verdict,
+            now);
+
+        await _studentFlashcardRepository.UpdateAsync(studentFlashcard, cancellationToken);
+
+        FlashcardAnswerHistory history = FlashcardAnswerHistory.Create(
+            flashcardSessionId: null,
+            flashcardSessionItemId: null,
+            studentFlashcardId: studentFlashcard.StudentFlashcardId,
+            submittedAnswer: submittedAnswer,
+            expectedAnswerSnapshot: flashcard.Answer,
+            responseTimeMs: request.ResponseTimeMs,
+            aiQualityScore: request.Evaluation.QualityScore,
+            fallbackQualityScore: null,
+            finalQualityScore: request.Evaluation.QualityScore,
+            wasAcceptedAsCorrect: request.Evaluation.AcceptedAsCorrect,
+            scoringSource: AnswerScoringSource.Ai,
+            answeredAt: now);
+
+        history.AttachEvaluation(new FlashcardAnswerEvaluation(
+            verdict,
+            request.Evaluation.AcceptedAsCorrect,
+            request.Evaluation.QualityScore,
+            request.Evaluation.FeedbackSummary,
+            request.Evaluation.SemanticRationale));
+
+        await _flashcardAnswerHistoryRepository.AddAsync(history, cancellationToken);
+
+        IReadOnlyList<FlashcardAnswerHistory> existingRecentAnswers =
+            await _flashcardAnswerHistoryRepository.GetRecentByStudentFlashcardIdAsync(studentFlashcard.StudentFlashcardId, 9, cancellationToken);
+
+        List<FlashcardAnswerHistory> analyticsRecentAnswers = [history, .. existingRecentAnswers];
+        await _studentFlashcardAnalyticsService.ApplyEvaluatedAttemptAnalyticsAsync(
+            studentFlashcard,
+            request.Analytics,
+            analyticsRecentAnswers,
+            cancellationToken);
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        long studentCourseId = flashcard.Note.Document.Folder.StudentCourseId;
+        await _performanceSummaryService.RefreshStudentCourseSummaryAsync(studentCourseId, cancellationToken);
+        await _performanceSummaryService.RefreshOverallSummaryAsync(studentId, cancellationToken);
+        await _studentPerformanceAiWorkQueue.QueueAsync(
+            new StudentPerformanceAiWorkItem(studentId, _sqidService.Encode(studentCourseId)),
+            cancellationToken);
+
+        StudentFlashcardAnalyticsResponse analytics =
+            await _studentFlashcardAnalyticsService.GetByFlashcardSqidAsync(flashcardSqid, studentId, cancellationToken)
+            ?? throw new StudentFlashcardValidationException("Unable to load flashcard analytics after the evaluated attempt was saved.");
+
+        FlashcardAttemptResultResponse attempt = new()
+        {
+            FlashcardSqid = flashcardSqid,
+            SubmittedAnswer = submittedAnswer,
+            ExpectedAnswer = flashcard.Answer,
+            Feedback = request.Evaluation.FeedbackSummary,
+            IsCorrect = request.Evaluation.AcceptedAsCorrect,
+            Evaluation = CreateEvaluationResponse(
+                verdict,
+                request.Evaluation.AcceptedAsCorrect,
+                request.Evaluation.QualityScore,
+                request.Evaluation.FeedbackSummary,
+                request.Evaluation.SemanticRationale),
+            ShowAgainInSession = !request.Evaluation.AcceptedAsCorrect,
+            RequeueAfter = request.Evaluation.AcceptedAsCorrect ? 0 : 3,
+            NextReviewAt = studentFlashcard.NextReviewAt,
+            Progress = studentFlashcard.ToProgressResponse(flashcard, _sqidService)
+        };
+
+        return new SubmitEvaluatedFlashcardAttemptResponse
+        {
+            Attempt = attempt,
+            Analytics = analytics,
+            AnalyticsStatus = analytics.AiStatus
         };
     }
 
@@ -161,6 +292,7 @@ public sealed class StudentFlashcardService : IStudentFlashcardService
         (StudentFlashcard studentFlashcard, Flashcard flashcard) = await EnsureTrackedProgressAsync(flashcardSqid, studentId, cancellationToken);
         studentFlashcard.MarkCorrect();
         await _studentFlashcardRepository.UpdateAsync(studentFlashcard, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         return studentFlashcard.ToProgressResponse(flashcard, _sqidService);
     }
 
@@ -169,6 +301,7 @@ public sealed class StudentFlashcardService : IStudentFlashcardService
         (StudentFlashcard studentFlashcard, Flashcard flashcard) = await EnsureTrackedProgressAsync(flashcardSqid, studentId, cancellationToken);
         studentFlashcard.MarkWrong();
         await _studentFlashcardRepository.UpdateAsync(studentFlashcard, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         return studentFlashcard.ToProgressResponse(flashcard, _sqidService);
     }
 
@@ -177,6 +310,7 @@ public sealed class StudentFlashcardService : IStudentFlashcardService
         (StudentFlashcard studentFlashcard, Flashcard flashcard) = await EnsureTrackedProgressAsync(flashcardSqid, studentId, cancellationToken);
         studentFlashcard.ResetProgress();
         await _studentFlashcardRepository.UpdateAsync(studentFlashcard, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         return studentFlashcard.ToProgressResponse(flashcard, _sqidService);
     }
 
@@ -194,6 +328,7 @@ public sealed class StudentFlashcardService : IStudentFlashcardService
 
         studentFlashcard.MarkDeleted();
         await _studentFlashcardRepository.UpdateAsync(studentFlashcard, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Archived flashcard progress for flashcard {FlashcardId}", flashcardId);
     }
 
@@ -209,6 +344,7 @@ public sealed class StudentFlashcardService : IStudentFlashcardService
         StudentFlashcard? active = await _studentFlashcardRepository.GetTrackedByStudentAndFlashcardIdAsync(studentId, flashcardId, cancellationToken);
         if (active is not null)
         {
+            await _studentFlashcardAnalyticsService.EnsureInitializedAsync(active, cancellationToken);
             return (active, flashcard);
         }
 
@@ -217,12 +353,17 @@ public sealed class StudentFlashcardService : IStudentFlashcardService
         {
             archived.Restore(DateTime.UtcNow);
             await _studentFlashcardRepository.UpdateAsync(archived, cancellationToken);
+            await _studentFlashcardAnalyticsService.EnsureInitializedAsync(archived, cancellationToken);
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
             return (archived, flashcard);
         }
 
         StudentFlashcard created = new(studentId, flashcardId);
         created.StartTracking(DateTime.UtcNow);
         await _studentFlashcardRepository.AddAsync(created, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        await _studentFlashcardAnalyticsService.EnsureInitializedAsync(created, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         return (created, flashcard);
     }
 
@@ -291,6 +432,33 @@ public sealed class StudentFlashcardService : IStudentFlashcardService
     private static bool AnswersMatch(string submittedAnswer, string expectedAnswer)
     {
         return NormalizeForComparison(submittedAnswer) == NormalizeForComparison(expectedAnswer);
+    }
+
+    private static FlashcardAnswerEvaluationResponse CreateEvaluationResponse(
+        FlashcardAnswerVerdict verdict,
+        bool acceptedAsCorrect,
+        int qualityScore,
+        string feedbackSummary,
+        string semanticRationale)
+    {
+        return new FlashcardAnswerEvaluationResponse
+        {
+            Verdict = verdict.ToString(),
+            AcceptedAsCorrect = acceptedAsCorrect,
+            QualityScore = qualityScore,
+            FeedbackSummary = feedbackSummary,
+            SemanticRationale = semanticRationale
+        };
+    }
+
+    private static TEnum ParseEnum<TEnum>(string rawValue, string fieldName) where TEnum : struct, Enum
+    {
+        if (string.IsNullOrWhiteSpace(rawValue) || !Enum.TryParse(rawValue.Trim(), true, out TEnum parsedValue))
+        {
+            throw new StudentFlashcardValidationException($"{fieldName} is invalid.");
+        }
+
+        return parsedValue;
     }
 
     private static string NormalizeForComparison(string value)

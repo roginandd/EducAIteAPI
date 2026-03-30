@@ -13,7 +13,7 @@ public class FolderService : IFolderService
 {
     private readonly IFolderRepository _folderRepository;
     private readonly IStudentRepository _studentRepository;
-    private readonly ICourseRepository _courseRepository;
+    private readonly IStudentCourseRepository _studentCourseRepository;
     private readonly IDocumentRepository _documentRepository;
     private readonly INoteRepository _noteRepository;
     private readonly IResourceOwnershipService _resourceOwnershipService;
@@ -24,7 +24,7 @@ public class FolderService : IFolderService
     public FolderService(
         IFolderRepository folderRepository,
         IStudentRepository studentRepository,
-        ICourseRepository courseRepository,
+        IStudentCourseRepository studentCourseRepository,
         IDocumentRepository documentRepository,
         INoteRepository noteRepository,
         IResourceOwnershipService resourceOwnershipService,
@@ -34,7 +34,7 @@ public class FolderService : IFolderService
     {
         _folderRepository = folderRepository;
         _studentRepository = studentRepository;
-        _courseRepository = courseRepository;
+        _studentCourseRepository = studentCourseRepository;
         _documentRepository = documentRepository;
         _noteRepository = noteRepository;
         _resourceOwnershipService = resourceOwnershipService;
@@ -240,9 +240,10 @@ public class FolderService : IFolderService
         EnsureStudentIdIsValid(studentId);
 
         long? parentFolderId = DecodeOptionalSqid(request.ParentFolderSqid, "ParentFolderSqid");
-        await ValidateFolderRequestAsync(request.FolderKey, request.CourseId, parentFolderId, studentId, null, cancellationToken);
+        long studentCourseId = DecodeRequiredSqid(request.StudentCourseSqid, nameof(request.StudentCourseSqid));
+        await ValidateFolderRequestAsync(request.FolderKey, studentCourseId, parentFolderId, studentId, null, cancellationToken);
 
-        Folder folder = request.ToEntity(studentId);
+        Folder folder = request.ToEntity(studentId, studentCourseId);
         folder.ParentFolderId = parentFolderId;
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
@@ -292,18 +293,20 @@ public class FolderService : IFolderService
 
         long? parentFolderId = DecodeOptionalSqid(request.ParentFolderSqid, "ParentFolderSqid");
 
-        if (IsUnchanged(existingFolder, request, parentFolderId))
+        long studentCourseId = DecodeRequiredSqid(request.StudentCourseSqid, nameof(request.StudentCourseSqid));
+
+        if (IsUnchanged(existingFolder, request, parentFolderId, studentCourseId))
         {
             return true;
         }
 
-        await ValidateFolderRequestAsync(request.FolderKey, request.CourseId, parentFolderId, studentId, folderId, cancellationToken);
+        await ValidateFolderRequestAsync(request.FolderKey, studentCourseId, parentFolderId, studentId, folderId, cancellationToken);
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
         try
         {
-            request.ApplyToEntity(existingFolder);
+            request.ApplyToEntity(existingFolder, studentCourseId);
             existingFolder.ParentFolderId = parentFolderId;
             await _folderRepository.UpdateAsync(existingFolder, cancellationToken);
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
@@ -355,7 +358,7 @@ public class FolderService : IFolderService
 
     private async Task ValidateFolderRequestAsync(
         string folderKey,
-        long? courseId,
+        long studentCourseId,
         long? parentFolderId,
         long studentId,
         long? currentFolderId,
@@ -366,13 +369,10 @@ public class FolderService : IFolderService
             throw new InvalidOperationException($"Folder with key {folderKey.Trim()} already exists for this student.");
         }
 
-        if (courseId.HasValue)
+        StudentCourse? studentCourse = await _studentCourseRepository.GetByIdAndStudentIdAsync(studentCourseId, studentId, cancellationToken);
+        if (studentCourse is null)
         {
-            Course? course = await _courseRepository.GetByIdAsync(courseId.Value, cancellationToken);
-            if (course is null)
-            {
-                throw new KeyNotFoundException($"Course with ID {courseId.Value} not found.");
-            }
+            throw new KeyNotFoundException($"Student course with ID {studentCourseId} not found.");
         }
 
         if (!parentFolderId.HasValue)
@@ -386,6 +386,12 @@ public class FolderService : IFolderService
         }
 
         await _resourceOwnershipService.EnsureFolderOwnedByStudentAsync(parentFolderId.Value, studentId, cancellationToken);
+
+        Folder? parentFolder = await _folderRepository.GetByIdAsync(parentFolderId.Value, cancellationToken);
+        if (parentFolder is not null && parentFolder.StudentCourseId != studentCourseId)
+        {
+            throw new InvalidOperationException("Parent folder must belong to the same enrolled course.");
+        }
 
         if (currentFolderId.HasValue &&
             await _folderRepository.IsDescendantAsync(currentFolderId.Value, parentFolderId.Value, cancellationToken))
@@ -405,14 +411,14 @@ public class FolderService : IFolderService
         }
     }
 
-    private static bool IsUnchanged(Folder existingFolder, UpdateFolderRequest request, long? parentFolderId)
+    private static bool IsUnchanged(Folder existingFolder, UpdateFolderRequest request, long? parentFolderId, long studentCourseId)
     {
         return string.Equals(existingFolder.FolderKey, request.FolderKey.Trim(), StringComparison.Ordinal) &&
                string.Equals(existingFolder.Name, request.Name.Trim(), StringComparison.Ordinal) &&
                existingFolder.SchoolYear.StartYear == request.SchoolYearStart &&
                existingFolder.SchoolYear.EndYear == request.SchoolYearEnd &&
                existingFolder.Semester == request.Semester &&
-               existingFolder.CourseId == request.CourseId &&
+               existingFolder.StudentCourseId == studentCourseId &&
                existingFolder.ParentFolderId == parentFolderId;
     }
 
@@ -448,6 +454,16 @@ public class FolderService : IFolderService
         }
 
         if (!_sqidService.TryDecode(sqid.Trim(), out long decodedId))
+        {
+            throw new ArgumentException($"{parameterName} is invalid.");
+        }
+
+        return decodedId;
+    }
+
+    private long DecodeRequiredSqid(string sqid, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(sqid) || !_sqidService.TryDecode(sqid.Trim(), out long decodedId))
         {
             throw new ArgumentException($"{parameterName} is invalid.");
         }

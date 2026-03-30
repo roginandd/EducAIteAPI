@@ -240,16 +240,18 @@ public class DocumentService : IDocumentService
         if (existingDocument is null)
             return false;
 
-        if (IsUnchanged(existingDocument, request))
+        (long folderId, long fileMetadataId) = ResolveUpdateReferences(request, existingDocument);
+
+        if (IsUnchanged(existingDocument, request, folderId, fileMetadataId))
             return true;
 
-        await ValidateOwnershipAsync(request.FolderId, request.FileMetadataId, studentId, cancellationToken);
+        await ValidateOwnershipAsync(folderId, fileMetadataId, studentId, cancellationToken);
 
         await _unitOfWork.BeginTransactionAsync(cancellationToken);
 
         try
         {
-            request.ApplyToEntity(existingDocument);
+            existingDocument.UpdateDetails(request.DocumentName, folderId, fileMetadataId);
             await _documentRepository.UpdateAsync(existingDocument, cancellationToken);
 
             await _unitOfWork.CommitTransactionAsync(cancellationToken);
@@ -298,11 +300,45 @@ public class DocumentService : IDocumentService
         return true;
     }
 
-    private static bool IsUnchanged(Document existingDocument, UpdateDocumentRequest request)
+    private (long FolderId, long FileMetadataId) ResolveUpdateReferences(UpdateDocumentRequest request, Document existingDocument)
+    {
+        long folderId = request.FolderId ?? existingDocument.FolderId;
+        long fileMetadataId = request.FileMetadataId ?? existingDocument.FileMetadataId;
+
+        if (folderId <= 0 && !string.IsNullOrWhiteSpace(request.FolderSqid))
+        {
+            if (!_sqidService.TryDecode(request.FolderSqid, out folderId))
+            {
+                throw new ArgumentException("FolderSqid is invalid.", nameof(request));
+            }
+        }
+
+        if (fileMetadataId <= 0 && !string.IsNullOrWhiteSpace(request.FileMetadataSqid))
+        {
+            if (!_sqidService.TryDecode(request.FileMetadataSqid, out fileMetadataId))
+            {
+                throw new ArgumentException("FileMetadataSqid is invalid.", nameof(request));
+            }
+        }
+
+        if (folderId <= 0)
+        {
+            throw new ArgumentException("Folder reference is required.", nameof(request));
+        }
+
+        if (fileMetadataId <= 0)
+        {
+            throw new ArgumentException("File metadata reference is required.", nameof(request));
+        }
+
+        return (folderId, fileMetadataId);
+    }
+
+    private static bool IsUnchanged(Document existingDocument, UpdateDocumentRequest request, long folderId, long fileMetadataId)
     {
         return string.Equals(existingDocument.DocumentName, request.DocumentName.Trim(), StringComparison.Ordinal) &&
-               existingDocument.FolderId == request.FolderId &&
-               existingDocument.FileMetadataId == request.FileMetadataId;
+               existingDocument.FolderId == folderId &&
+               existingDocument.FileMetadataId == fileMetadataId;
     }
 
     private async Task EnsureStudentExistsAsync(long studentId, CancellationToken cancellationToken = default)

@@ -161,8 +161,13 @@ public class StudyLoadService(
                 await _studentCourseRepository.AddAsync(studentCourse, cancellationToken);
             }
 
+            IReadOnlyList<StudentCourse> enrolledStudentCourses = await _studentCourseRepository.GetAllByStudyLoadIdAndStudentIdAsync(
+                studyLoadId,
+                studentId,
+                cancellationToken);
+
             int createdFolderCount = await CreateMissingCourseFoldersAsync(
-                persistedCourses,
+                enrolledStudentCourses,
                 studentId,
                 studyLoad.SchoolYearStart,
                 studyLoad.SchoolYearEnd,
@@ -192,32 +197,32 @@ public class StudyLoadService(
     }
 
     private async Task<int> CreateMissingCourseFoldersAsync(
-        IReadOnlyList<Course> courses,
+        IReadOnlyList<StudentCourse> studentCourses,
         long studentId,
         int schoolYearStart,
         int schoolYearEnd,
         byte semester,
         CancellationToken cancellationToken)
     {
-        if (courses.Count == 0)
+        if (studentCourses.Count == 0)
         {
             return 0;
         }
 
-        List<Course> distinctCourses = courses
-            .Where(course => course.CourseId > 0)
-            .GroupBy(course => course.CourseId)
+        List<StudentCourse> distinctStudentCourses = studentCourses
+            .Where(studentCourse => studentCourse.StudentCourseId > 0)
+            .GroupBy(studentCourse => studentCourse.StudentCourseId)
             .Select(group => group.First())
             .ToList();
 
-        if (distinctCourses.Count == 0)
+        if (distinctStudentCourses.Count == 0)
         {
             return 0;
         }
 
-        IReadOnlySet<long> existingCourseIds = await _folderRepository.GetExistingCourseIdsAsync(
+        IReadOnlySet<long> existingStudentCourseIds = await _folderRepository.GetExistingStudentCourseIdsAsync(
             studentId,
-            distinctCourses.Select(course => course.CourseId).ToArray(),
+            distinctStudentCourses.Select(studentCourse => studentCourse.StudentCourseId).ToArray(),
             cancellationToken);
 
         HashSet<string> reservedFolderKeys = new(
@@ -226,14 +231,14 @@ public class StudyLoadService(
 
         List<Folder> foldersToCreate = [];
 
-        foreach (Course course in distinctCourses)
+        foreach (StudentCourse studentCourse in distinctStudentCourses)
         {
-            if (existingCourseIds.Contains(course.CourseId))
+            if (existingStudentCourseIds.Contains(studentCourse.StudentCourseId))
             {
                 continue;
             }
 
-            string folderName = ResolveFolderName(course);
+            string folderName = ResolveFolderName(studentCourse.Course);
             string folderKey = BuildUniqueFolderKey(folderName, reservedFolderKeys);
 
             foldersToCreate.Add(new Folder(
@@ -242,7 +247,7 @@ public class StudyLoadService(
                 semester,
                 folderKey,
                 folderName,
-                course.CourseId));
+                studentCourse.StudentCourseId));
         }
 
         if (foldersToCreate.Count == 0)
