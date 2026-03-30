@@ -10,9 +10,15 @@ public interface IStudentFlashcardRepository
 
     Task<StudentFlashcard?> GetTrackedIncludingDeletedByStudentAndFlashcardIdAsync(long studentId, long flashcardId, CancellationToken cancellationToken = default);
 
+    Task<StudentFlashcard?> GetTrackedByIdAndStudentIdAsync(long studentFlashcardId, long studentId, CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<StudentFlashcard>> GetReviewQueueByStudentIdAsync(long studentId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<StudentFlashcard>> GetDueBatchByStudentIdAsync(long studentId, DateTime now, IReadOnlyCollection<long> excludeFlashcardIds, int take, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<StudentFlashcard>> GetDueBatchByStudentCourseIdAsync(long studentId, long studentCourseId, DateTime now, IReadOnlyCollection<long> excludeFlashcardIds, int take, CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<StudentFlashcard>> GetAllByStudentCourseIdAsync(long studentCourseId, CancellationToken cancellationToken = default);
 
     Task<IReadOnlyList<StudentFlashcard>> GetTrackedByFlashcardIdAsync(long flashcardId, CancellationToken cancellationToken = default);
 
