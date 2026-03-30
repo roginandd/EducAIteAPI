@@ -3,6 +3,7 @@ using System;
 using EducAIte.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260326074549_RemoveSCourseToSFlashcard")]
+    partial class RemoveSCourseToSFlashcard
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -222,20 +225,6 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
 
-                    b.Property<string>("AnsweringGuidance")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasDefaultValue("");
-
-                    b.Property<string>("ConceptExplanation")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)")
-                        .HasDefaultValue("");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -260,94 +249,6 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                     b.HasIndex("NoteId");
 
                     b.ToTable("Flashcards", (string)null);
-                });
-
-            modelBuilder.Entity("EducAIte.Domain.Entities.FlashcardAcceptedAnswerAlias", b =>
-                {
-                    b.Property<long>("FlashcardAcceptedAnswerAliasId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("FlashcardAcceptedAnswerAliasId"));
-
-                    b.Property<string>("Alias")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("timezone('utc', now())");
-
-                    b.Property<long>("FlashcardId")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("Order")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer")
-                        .HasDefaultValue(0);
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("timezone('utc', now())");
-
-                    b.HasKey("FlashcardAcceptedAnswerAliasId");
-
-                    b.HasIndex("FlashcardId", "Order");
-
-                    b.ToTable("FlashcardAcceptedAnswerAliases", (string)null);
-                });
-
-            modelBuilder.Entity("EducAIte.Domain.Entities.FlashcardAnswerEvaluation", b =>
-                {
-                    b.Property<long>("FlashcardAnswerEvaluationId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("FlashcardAnswerEvaluationId"));
-
-                    b.Property<bool>("AcceptedAsCorrect")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("timezone('utc', now())");
-
-                    b.Property<string>("FeedbackSummary")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<long>("FlashcardAnswerHistoryId")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("QualityScore")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("SemanticRationale")
-                        .IsRequired()
-                        .ValueGeneratedOnAdd()
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)")
-                        .HasDefaultValue("");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("timezone('utc', now())");
-
-                    b.Property<int>("Verdict")
-                        .HasColumnType("integer");
-
-                    b.HasKey("FlashcardAnswerEvaluationId");
-
-                    b.HasIndex("FlashcardAnswerHistoryId")
-                        .IsUnique();
-
-                    b.ToTable("FlashcardAnswerEvaluations", (string)null);
                 });
 
             modelBuilder.Entity("EducAIte.Domain.Entities.FlashcardAnswerHistory", b =>
@@ -959,12 +860,6 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                         .HasColumnType("integer")
                         .HasDefaultValue(0);
 
-                    b.Property<int?>("LastEvaluationVerdict")
-                        .HasColumnType("integer");
-
-                    b.Property<int?>("LastQualityScore")
-                        .HasColumnType("integer");
-
                     b.Property<int?>("LastReviewOutcome")
                         .HasColumnType("integer");
 
@@ -1279,28 +1174,6 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
                     b.Navigation("Note");
                 });
 
-            modelBuilder.Entity("EducAIte.Domain.Entities.FlashcardAcceptedAnswerAlias", b =>
-                {
-                    b.HasOne("EducAIte.Domain.Entities.Flashcard", "Flashcard")
-                        .WithMany("AcceptedAnswerAliases")
-                        .HasForeignKey("FlashcardId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Flashcard");
-                });
-
-            modelBuilder.Entity("EducAIte.Domain.Entities.FlashcardAnswerEvaluation", b =>
-                {
-                    b.HasOne("EducAIte.Domain.Entities.FlashcardAnswerHistory", "FlashcardAnswerHistory")
-                        .WithOne("Evaluation")
-                        .HasForeignKey("EducAIte.Domain.Entities.FlashcardAnswerEvaluation", "FlashcardAnswerHistoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("FlashcardAnswerHistory");
-                });
-
             modelBuilder.Entity("EducAIte.Domain.Entities.FlashcardAnswerHistory", b =>
                 {
                     b.HasOne("EducAIte.Domain.Entities.FlashcardSession", "FlashcardSession")
@@ -1543,14 +1416,7 @@ namespace EducAIteSolution.src.EducAIte.Infrastructure.Data.Migrations
 
             modelBuilder.Entity("EducAIte.Domain.Entities.Flashcard", b =>
                 {
-                    b.Navigation("AcceptedAnswerAliases");
-
                     b.Navigation("StudentFlashcards");
-                });
-
-            modelBuilder.Entity("EducAIte.Domain.Entities.FlashcardAnswerHistory", b =>
-                {
-                    b.Navigation("Evaluation");
                 });
 
             modelBuilder.Entity("EducAIte.Domain.Entities.FlashcardSession", b =>
