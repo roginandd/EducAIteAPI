@@ -53,10 +53,10 @@ public class FolderConfiguration : IEntityTypeConfiguration<Folder>
             .HasForeignKey(f => f.StudentId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne(f => f.Course)
-            .WithMany()
-            .HasForeignKey(f => f.CourseId)
-            .OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(f => f.StudentCourse)
+            .WithMany(studentCourse => studentCourse.Folders)
+            .HasForeignKey(f => f.StudentCourseId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // Self-referencing relationship for parent/child folders
         builder.HasOne(f => f.ParentFolder)

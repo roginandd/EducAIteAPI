@@ -23,6 +23,16 @@ public class FlashcardConfiguration : IEntityTypeConfiguration<Flashcard>
             .IsRequired()
             .HasMaxLength(2000);
 
+        builder.Property(f => f.ConceptExplanation)
+            .IsRequired()
+            .HasMaxLength(4000)
+            .HasDefaultValue(string.Empty);
+
+        builder.Property(f => f.AnsweringGuidance)
+            .IsRequired()
+            .HasMaxLength(2000)
+            .HasDefaultValue(string.Empty);
+
         builder.Property(f => f.CreatedAt)
             .IsRequired();
 
@@ -41,6 +51,9 @@ public class FlashcardConfiguration : IEntityTypeConfiguration<Flashcard>
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.Navigation(f => f.StudentFlashcards)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
+        builder.Navigation(f => f.AcceptedAnswerAliases)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

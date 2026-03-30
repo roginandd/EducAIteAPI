@@ -1,5 +1,3 @@
-using EducAIte.Domain.Enum;
-
 namespace EducAIte.Infrastructure.Data.Configurations;
 
 using EducAIte.Domain.Entities;
@@ -32,16 +30,18 @@ public class StudentFlashcardConfiguration : IEntityTypeConfiguration<StudentFla
         builder.Property(sf => sf.LapseCount)
             .HasDefaultValue(0);
 
+        builder.Property(sf => sf.LastQualityScore);
+
         builder.Property(sf => sf.NextReviewAt)
             .IsRequired()
             .HasDefaultValueSql("timezone('utc', now())");
 
         builder.Property(sf => sf.LastReviewedAt);
 
-        builder.Property(sf => sf.State)
-            .HasConversion<int>();
-
         builder.Property(sf => sf.LastReviewOutcome)
+            .HasConversion<int?>();
+
+        builder.Property(sf => sf.LastEvaluationVerdict)
             .HasConversion<int?>();
 
         builder.Property(sf => sf.CreatedAt)
@@ -74,7 +74,5 @@ public class StudentFlashcardConfiguration : IEntityTypeConfiguration<StudentFla
             .IsUnique();
 
         builder.HasIndex(sf => new { sf.StudentId, sf.NextReviewAt });
-
-        builder.HasIndex(sf => new { sf.StudentId, sf.State, sf.NextReviewAt });
     }
 }
