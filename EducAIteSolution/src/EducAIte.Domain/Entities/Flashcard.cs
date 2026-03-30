@@ -2,12 +2,18 @@ namespace EducAIte.Domain.Entities;
 
 public class Flashcard
 {
+    private readonly List<FlashcardAcceptedAnswerAlias> _acceptedAnswerAliases = [];
+
     // Primary Key
     public long FlashcardId { get; private set; }
 
     public string Question { get; private set; } = string.Empty;
 
     public string Answer { get; private set; } = string.Empty;
+
+    public string ConceptExplanation { get; private set; } = string.Empty;
+
+    public string AnsweringGuidance { get; private set; } = string.Empty;
 
     // Foreign Key
     public long NoteId { get; private set; }
@@ -22,22 +28,41 @@ public class Flashcard
     private readonly HashSet<StudentFlashcard> _studentFlashcards = new();
     public IReadOnlyCollection<StudentFlashcard> StudentFlashcards => _studentFlashcards.AsReadOnly();
 
+    public IReadOnlyCollection<FlashcardAcceptedAnswerAlias> AcceptedAnswerAliases => _acceptedAnswerAliases.AsReadOnly();
+
     private Flashcard() { }
 
-    public Flashcard(string question, string answer, long noteId)
+    public Flashcard(
+        string question,
+        string answer,
+        long noteId,
+        string? conceptExplanation = null,
+        string? answeringGuidance = null,
+        IEnumerable<string>? acceptedAnswerAliases = null)
     {
         Question = NormalizeQuestion(question);
         Answer = NormalizeAnswer(answer);
+        ConceptExplanation = NormalizeOptionalText(conceptExplanation, nameof(conceptExplanation), 4000);
+        AnsweringGuidance = NormalizeOptionalText(answeringGuidance, nameof(answeringGuidance), 2000);
         NoteId = ValidatePositiveId(noteId, nameof(noteId));
+        ReplaceAcceptedAnswerAliases(acceptedAnswerAliases);
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void UpdateContent(string question, string answer)
+    public void UpdateContent(
+        string question,
+        string answer,
+        string? conceptExplanation = null,
+        string? answeringGuidance = null,
+        IEnumerable<string>? acceptedAnswerAliases = null)
     {
         EnsureNotDeleted();
         Question = NormalizeQuestion(question);
         Answer = NormalizeAnswer(answer);
+        ConceptExplanation = NormalizeOptionalText(conceptExplanation, nameof(conceptExplanation), 4000);
+        AnsweringGuidance = NormalizeOptionalText(answeringGuidance, nameof(answeringGuidance), 2000);
+        ReplaceAcceptedAnswerAliases(acceptedAnswerAliases);
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -114,6 +139,37 @@ public class Flashcard
         if (normalized.Length > 2000)
         {
             throw new ArgumentException("Answer cannot exceed 2000 characters.", nameof(answer));
+        }
+
+        return normalized;
+    }
+
+    private void ReplaceAcceptedAnswerAliases(IEnumerable<string>? acceptedAnswerAliases)
+    {
+        _acceptedAnswerAliases.Clear();
+
+        if (acceptedAnswerAliases is null)
+        {
+            return;
+        }
+
+        int order = 0;
+        foreach (string alias in acceptedAnswerAliases
+                     .Where(value => !string.IsNullOrWhiteSpace(value))
+                     .Select(value => value.Trim())
+                     .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            _acceptedAnswerAliases.Add(new FlashcardAcceptedAnswerAlias(alias, order));
+            order += 1;
+        }
+    }
+
+    private static string NormalizeOptionalText(string? value, string paramName, int maxLength)
+    {
+        string normalized = (value ?? string.Empty).Trim();
+        if (normalized.Length > maxLength)
+        {
+            throw new ArgumentException($"{paramName} cannot exceed {maxLength} characters.", paramName);
         }
 
         return normalized;

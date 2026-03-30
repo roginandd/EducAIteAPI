@@ -1,6 +1,6 @@
-using EducAIte.Domain.Enum;
-
 namespace EducAIte.Domain.Entities;
+
+using EducAIte.Domain.Enum;
 
 public class StudentFlashcard
 {
@@ -26,8 +26,9 @@ public class StudentFlashcard
     public int ConsecutiveWrongCount {get; private set; }
     public int ReviewCount { get; private set; }
     public int LapseCount { get; private set; }
-    public FlashcardReviewState State { get; private set; }
     public FlashcardReviewOutcome? LastReviewOutcome { get; private set; }
+    public FlashcardAnswerVerdict? LastEvaluationVerdict { get; private set; }
+    public int? LastQualityScore { get; private set; }
 
     // Additional Properties
     public bool IsDeleted { get; private set; }
@@ -45,7 +46,6 @@ public class StudentFlashcard
         ConsecutiveCorrectCount = 0;
         WrongCount = 0;
         NextReviewAt = now;
-        State = FlashcardReviewState.New;
         CreatedAt = now;
         UpdatedAt = now;
     }
@@ -65,56 +65,68 @@ public class StudentFlashcard
 
     public void MarkCorrect()
     {
-        ApplyCorrectReview(DateTime.UtcNow);
+        ApplyEvaluation(true, 5, FlashcardAnswerVerdict.ExactCorrect, DateTime.UtcNow);
     }
 
     public void MarkWrong()
     {
-        ApplyWrongReview(DateTime.UtcNow);
+        ApplyEvaluation(false, 0, FlashcardAnswerVerdict.Incorrect, DateTime.UtcNow);
     }
 
     public void ApplyReviewResult(bool isCorrect, DateTime? reviewedAt = null)
     {
-        if (isCorrect)
+        ApplyEvaluation(
+            isCorrect,
+            isCorrect ? 5 : 0,
+            isCorrect ? FlashcardAnswerVerdict.ExactCorrect : FlashcardAnswerVerdict.Incorrect,
+            reviewedAt);
+    }
+
+    public void ApplyReviewQuality(int qualityScore, DateTime? reviewedAt = null)
+    {
+        ApplyEvaluation(
+            qualityScore >= 3,
+            qualityScore,
+            qualityScore >= 3 ? FlashcardAnswerVerdict.ExactCorrect : FlashcardAnswerVerdict.Incorrect,
+            reviewedAt);
+    }
+
+    public void ApplyEvaluation(
+        bool acceptedAsCorrect,
+        int qualityScore,
+        FlashcardAnswerVerdict verdict,
+        DateTime? reviewedAt = null)
+    {
+        EnsureNotDeleted();
+
+        if (qualityScore is < 0 or > 5)
         {
-            ApplyCorrectReview(reviewedAt);
+            throw new ArgumentException("Quality score must be between 0 and 5.", nameof(qualityScore));
+        }
+
+        DateTime reviewTime = NormalizeReviewTime(reviewedAt);
+        ReviewCount += 1;
+        LastReviewedAt = reviewTime;
+        LastEvaluationVerdict = verdict;
+        LastQualityScore = qualityScore;
+        UpdatedAt = reviewTime;
+
+        if (acceptedAsCorrect)
+        {
+            CorrectCount += 1;
+            ConsecutiveCorrectCount += 1;
+            ConsecutiveWrongCount = 0;
+            LastReviewOutcome = FlashcardReviewOutcome.Correct;
+            NextReviewAt = CalculateNextReviewAtAfterSuccess(reviewTime, qualityScore);
             return;
         }
 
-        ApplyWrongReview(reviewedAt);
-    }
-
-    public void ApplyCorrectReview(DateTime? reviewedAt = null)
-    {
-        EnsureNotDeleted();
-
-        DateTime reviewTime = NormalizeReviewTime(reviewedAt);
-        CorrectCount += 1;
-        ReviewCount += 1;
-        ConsecutiveCorrectCount += 1;
-        ConsecutiveWrongCount = 0;
-        LastReviewedAt = reviewTime;
-        LastReviewOutcome = FlashcardReviewOutcome.Correct;
-        State = DetermineStateAfterCorrect();
-        NextReviewAt = CalculateNextReviewAtAfterCorrect(reviewTime);
-        UpdatedAt = reviewTime;
-    }
-
-    public void ApplyWrongReview(DateTime? reviewedAt = null)
-    {
-        EnsureNotDeleted();
-
-        DateTime reviewTime = NormalizeReviewTime(reviewedAt);
         WrongCount += 1;
-        ReviewCount += 1;
         LapseCount += 1;
         ConsecutiveCorrectCount = 0;
         ConsecutiveWrongCount += 1;
-        LastReviewedAt = reviewTime;
         LastReviewOutcome = FlashcardReviewOutcome.Wrong;
-        State = State == FlashcardReviewState.Review ? FlashcardReviewState.Relearning : FlashcardReviewState.Learning;
-        NextReviewAt = reviewTime.AddMinutes(5);
-        UpdatedAt = reviewTime;
+        NextReviewAt = CalculateNextReviewAtAfterLapse(reviewTime, qualityScore);
     }
 
     public bool IsDue(DateTime? now = null)
@@ -140,8 +152,9 @@ public class StudentFlashcard
         ConsecutiveWrongCount = 0;
         ReviewCount = 0;
         LapseCount = 0;
-        State = FlashcardReviewState.New;
         LastReviewOutcome = null;
+        LastEvaluationVerdict = null;
+        LastQualityScore = null;
         UpdatedAt = reviewTime;
     }
 
@@ -173,32 +186,30 @@ public class StudentFlashcard
         UpdatedAt = reviewTime;
     }
 
-    private FlashcardReviewState DetermineStateAfterCorrect()
+    private DateTime CalculateNextReviewAtAfterSuccess(DateTime reviewTime, int qualityScore)
     {
-        if (ConsecutiveCorrectCount >= 2)
+        if (ConsecutiveCorrectCount == 1)
         {
-            return FlashcardReviewState.Review;
-        }
-
-        return State == FlashcardReviewState.Relearning
-            ? FlashcardReviewState.Learning
-            : FlashcardReviewState.Learning;
-    }
-
-    private DateTime CalculateNextReviewAtAfterCorrect(DateTime reviewTime)
-    {
-        if (ConsecutiveCorrectCount <= 1)
-        {
-            return reviewTime.AddHours(12);
+            return reviewTime.AddHours(qualityScore >= 5 ? 18 : 12);
         }
 
         if (ConsecutiveCorrectCount == 2)
         {
-            return reviewTime.AddDays(3);
+            return reviewTime.AddDays(qualityScore >= 5 ? 4 : 2);
         }
 
-        int intervalDays = Math.Min(30, ConsecutiveCorrectCount * 2);
+        int intervalDays = Math.Min(45, Math.Max(3, ConsecutiveCorrectCount * (qualityScore >= 5 ? 3 : 2)));
         return reviewTime.AddDays(intervalDays);
+    }
+
+    private static DateTime CalculateNextReviewAtAfterLapse(DateTime reviewTime, int qualityScore)
+    {
+        if (qualityScore <= 1)
+        {
+            return reviewTime.AddMinutes(10);
+        }
+
+        return reviewTime.AddMinutes(30);
     }
 
     private void EnsureNotDeleted()

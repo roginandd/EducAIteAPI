@@ -18,8 +18,8 @@ public class Folder
     public string FolderKey { get; set; } = string.Empty;
 
     public string Name { get; set; } = string.Empty;
-    public long? CourseId { get; set; } // Link to the actual Course entity
-    public Course? Course { get; set; }
+    public long StudentCourseId { get; set; }
+    public StudentCourse StudentCourse { get; set; } = null!;
 
     public long? ParentFolderId { get; set; }
     public Folder? ParentFolder { get; set; }
@@ -43,7 +43,7 @@ public class Folder
         byte semester,
         string folderKey,
         string name,
-        long? courseId = null,
+        long studentCourseId,
         long? parentFolderId = null)
     {
         StudentId = ValidateStudentId(studentId);
@@ -51,7 +51,7 @@ public class Folder
         Semester = ValidateSemester(semester);
         FolderKey = NormalizeFolderKey(folderKey);
         Name = NormalizeName(name);
-        CourseId = ValidateOptionalPositiveId(courseId, nameof(courseId));
+        StudentCourseId = ValidatePositiveId(studentCourseId, nameof(studentCourseId));
         ParentFolderId = ValidateOptionalPositiveId(parentFolderId, nameof(parentFolderId));
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
@@ -62,7 +62,7 @@ public class Folder
         byte semester,
         string folderKey,
         string name,
-        long? courseId,
+        long studentCourseId,
         long? parentFolderId)
     {
         EnsureNotDeleted();
@@ -71,7 +71,7 @@ public class Folder
         Semester = ValidateSemester(semester);
         FolderKey = NormalizeFolderKey(folderKey);
         Name = NormalizeName(name);
-        CourseId = ValidateOptionalPositiveId(courseId, nameof(courseId));
+        StudentCourseId = ValidatePositiveId(studentCourseId, nameof(studentCourseId));
         ParentFolderId = ValidateOptionalPositiveId(parentFolderId, nameof(parentFolderId));
         UpdatedAt = DateTime.UtcNow;
     }
@@ -182,6 +182,16 @@ public class Folder
         if (id is <= 0)
         {
             throw new ArgumentException($"{parameterName} must be greater than zero when provided.", parameterName);
+        }
+
+        return id;
+    }
+
+    private static long ValidatePositiveId(long id, string parameterName)
+    {
+        if (id <= 0)
+        {
+            throw new ArgumentException($"{parameterName} must be greater than zero.", parameterName);
         }
 
         return id;

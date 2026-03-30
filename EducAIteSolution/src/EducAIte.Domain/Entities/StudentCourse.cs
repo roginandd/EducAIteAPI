@@ -33,6 +33,16 @@ public class StudentCourse
     public List<Grade> Grades { get; private set; } = new();
 
     /// <summary>
+    /// Gets folders that are explicitly bound to this enrollment.
+    /// </summary>
+    public List<Folder> Folders { get; private set; } = new();
+
+    /// <summary>
+    /// Gets flashcard sessions scoped to this enrollment.
+    /// </summary>
+    public List<FlashcardSession> FlashcardSessions { get; private set; } = new();
+
+    /// <summary>
     /// Gets the owning study load.
     /// </summary>
     public StudyLoad StudyLoad { get; private set; } = null!;
