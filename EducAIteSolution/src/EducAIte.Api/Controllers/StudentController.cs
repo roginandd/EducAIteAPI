@@ -47,6 +47,30 @@ public class StudentController : ControllerBase
         return Ok(student);
     }
 
+    [HttpDelete("me")]
+    [Authorize]
+    public async Task<IActionResult> DeleteMe(CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentStudentId(out long studentId))
+        {
+            return Unauthorized(new { message = "Student ID claim is missing or invalid." });
+        }
+
+        await _studentService.ArchiveCurrentStudentAsync(studentId, cancellationToken);
+        return NoContent();
+    }
+
+    [HttpDelete("{studentSqid}/rollback-registration")]
+    [AllowAnonymous]
+    public async Task<IActionResult> RollbackRegistration(
+        string studentSqid,
+        [FromBody] RollbackStudentRegistrationRequest request,
+        CancellationToken cancellationToken)
+    {
+        await _studentService.RollbackRegisteredStudentAsync(studentSqid, request, cancellationToken);
+        return NoContent();
+    }
+
     private bool TryGetCurrentStudentId(out long studentId)
     {
         string? claimValue = User.FindFirstValue(ClaimTypes.NameIdentifier) ??

@@ -171,6 +171,23 @@ public class FlashcardController : ControllerBase
         return Ok(result);
     }
 
+    [HttpPost("{sqid}/evaluated-attempt")]
+    public async Task<IActionResult> SubmitEvaluatedAttempt(
+        string sqid,
+        [FromBody] SubmitEvaluatedFlashcardAttemptRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetCurrentStudentId(out long studentId))
+        {
+            return Unauthorized(new { message = "Student ID claim is missing or invalid." });
+        }
+
+        SubmitEvaluatedFlashcardAttemptResponse result =
+            await _studentFlashcardService.SubmitEvaluatedAttemptAsync(sqid, request, studentId, cancellationToken);
+
+        return Ok(result);
+    }
+
     [HttpGet("{sqid}/progress")]
     public async Task<IActionResult> GetProgress(string sqid, CancellationToken cancellationToken)
     {
