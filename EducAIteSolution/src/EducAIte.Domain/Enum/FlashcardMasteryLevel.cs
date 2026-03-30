@@ -1,9 +1,9 @@
 namespace EducAIte.Domain.Enum;
 
-public enum FlashcardReviewState
+public enum FlashcardMasteryLevel
 {
     New = 1,
     Learning = 2,
     Review = 3,
-    Relearning = 4
+    Mastered = 4
 }
